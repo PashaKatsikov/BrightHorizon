@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Cleartext is permitted on purpose.
+
+    Partner links routinely start life as an http:// redirect before landing
+    on https://, and on API 28+ Android blocks that outright — the WebView
+    then shows ERR_CLEARTEXT_NOT_PERMITTED, which the user reads as a broken
+    app (gray_part_pitfalls.md §17). Only the system trust anchors are used,
+    so nothing else about TLS validation is relaxed.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

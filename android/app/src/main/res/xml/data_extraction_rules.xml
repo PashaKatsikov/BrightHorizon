@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Nothing this app persists may travel to another device.
+
+    The route memory and the cached destination decide where an install
+    lands; restoring them onto a different device from a cloud backup or a
+    device transfer would hand that device a verdict it never earned.
+    Backups are disabled in the manifest as well — this file covers the
+    paths Android 12+ uses instead.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" />
+        <exclude domain="file" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" />
+        <exclude domain="file" />
+    </device-transfer>
+</data-extraction-rules>

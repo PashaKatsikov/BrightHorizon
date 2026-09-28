@@ -43,3 +43,19 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# ── Relay-flow secrets — NEVER commit real values ──
+# The `.example` sibling of google-services.json stays in git; the real
+# credentials file must not.
+android/app/google-services.json
+android/key.properties
+*.jks
+*.keystore
+
+# Forge recipe — holds plaintext secrets (AppsFlyer dev key, messaging
+# project number, config endpoint). `forge.lock` carries only the
+# identifying tuple and IS committed as the per-project audit trail.
+tool/forge/recipe.json
+
+# Symbol table produced by --split-debug-info.
+build/debug_info/

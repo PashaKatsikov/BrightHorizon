@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'audio.dart';
 
@@ -9,6 +10,30 @@ const goldDeep = Color(0xFFC48A22);
 const violet = Color(0xFFC9A6FF);
 const cream = Color(0xFFF6F0FF);
 const muted = Color(0xFFCBBBE4);
+
+/// Pins the device to landscape and waits until the platform view has
+/// actually rotated.
+///
+/// Every arcade screen is drawn for a wide viewport, so entering the game
+/// before the rotation lands produces one frame of squashed layout. The
+/// poll is bounded (2 s) so a device that refuses to rotate still starts.
+///
+/// The boot screen treats the returned future as a progress checkpoint —
+/// see `lib/boot/boot_screen.dart`.
+Future<void> lockLandscape() async {
+  await SystemChrome.setPreferredOrientations(const [
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+  for (var i = 0; i < 40; i++) {
+    final views = WidgetsBinding.instance.platformDispatcher.views;
+    if (views.isNotEmpty) {
+      final view = views.first;
+      if (view.physicalSize.width > view.physicalSize.height + 8) return;
+    }
+    await Future.delayed(const Duration(milliseconds: 50));
+  }
+}
 
 Route<T> horizonRoute<T>(Widget page) {
   return PageRouteBuilder<T>(

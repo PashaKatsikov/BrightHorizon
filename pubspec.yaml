@@ -1,5 +1,5 @@
 name: bright_horizon
-description: Bright Horizon, an observation arcade.
+description: "Bright Horizon — watch the violet halls, catch coins, fruit, stars and rare sevens."
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -9,15 +9,38 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  # ── White game ──
   audioplayers: ^6.5.1
-  permission_handler: ^12.0.1
   shared_preferences: ^2.5.3
+
+  # ── Relay flow stack ──
+  # Floors come from .cursor/rules/gray_part_pitfalls.md §19 — never pin
+  # below them. Versions are diversified upward from the sibling
+  # projects, never downward.
+  #
+  # ⚠️ DO NOT add file_picker above 8.x — Kotlin-only 10.x collides with
+  # Flutter's built-in Kotlin support (pitfalls §1). This project uses a
+  # native chooser over MethodChannel instead.
   webview_flutter: ^4.13.0
+  webview_flutter_android: ^4.14.0
+  connectivity_plus: ^7.1.1
+  appsflyer_sdk: ^6.18.1
+  firebase_core: ^4.11.0
+  firebase_messaging: ^16.4.0
+  firebase_app_check: ^0.4.5
+  flutter_local_notifications: ^22.0.1
+  flutter_secure_storage: ^10.3.1
+  device_info_plus: 11.4.0
+  http: ^1.6.0
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+  image: ^4.8.0
 
 flutter:
   uses-material-design: true
@@ -25,3 +48,16 @@ flutter:
     - assets/Bright_Horizon_additional_assets/
     - assets/Bright_Horizon_gameplay_assets/
     - assets/Bright_Horizon_sounds_assets/
+    - assets/generated/
+
+flutter_launcher_icons:
+  # Adaptive foreground is sized to 74 dp inside the 108 dp canvas
+  # (see tool/gen_icon.dart) so the artwork survives every launcher
+  # mask without clipping. Regenerate with:
+  #   dart run tool/gen_icon.dart ; dart run flutter_launcher_icons
+  android: true
+  ios: false
+  image_path: "assets/generated/app_icon.png"
+  adaptive_icon_background: "assets/generated/app_icon_background.png"
+  adaptive_icon_foreground: "assets/generated/app_icon_foreground.png"
+  remove_alpha_ios: true

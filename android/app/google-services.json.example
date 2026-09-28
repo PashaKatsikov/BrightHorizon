@@ -1,0 +1,45 @@
+{
+  "_comment": [
+    "STUB — DO NOT SHIP OR RENAME THIS FILE.",
+    "",
+    "To activate Firebase (push notifications + App Check):",
+    "  1. Firebase Console → Add project. One project per app; never",
+    "     reuse a sibling project, its project_number is a fingerprint.",
+    "  2. Register an Android app with package name",
+    "     com.sunward.brighthorizon — it must match applicationId in",
+    "     android/app/build.gradle.kts and applicationId in",
+    "     lib/relay/config/relay_config.dart exactly.",
+    "  3. Download google-services.json.",
+    "  4. Save it at android/app/google-services.json, next to this file.",
+    "  5. Confirm it is gitignored. Real credentials are never committed.",
+    "",
+    "Until google-services.json exists the Google Services Gradle plugin",
+    "is skipped (see android/app/build.gradle.kts) and Firebase fails to",
+    "initialise quietly. Combined with the credentialsReady gate in",
+    "relay_config.dart that sends every install to the native game, which",
+    "is intentional: the project builds and ships before credentials land."
+  ],
+  "project_info": {
+    "project_number": "000000000000",
+    "project_id": "REPLACE_ME",
+    "storage_bucket": "REPLACE_ME.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "android_client_info": {
+          "package_name": "com.sunward.brighthorizon"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        { "current_key": "REPLACE_ME" }
+      ],
+      "services": {
+        "appinvite_service": { "other_platform_oauth_client": [] }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

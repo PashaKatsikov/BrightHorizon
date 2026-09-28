@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background"/>
-    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+  <background android:drawable="@drawable/ic_launcher_background"/>
+  <foreground>
+      <!--
+          The foreground PNG is full-bleed, so this inset is the ONLY place
+          the artwork's size is decided: 108 dp × (1 − 2 × 0.185) ≈ 68 dp of
+          medallion — a touch smaller than before, with a bit more breathing
+          room inside every launcher mask.
+
+          ⚠️ `dart run flutter_launcher_icons` rewrites this file and resets
+          the inset to its 16 % default. Restore 18.5% afterwards — see the
+          header of tool/gen_icon.dart.
+      -->
+      <inset
+          android:drawable="@drawable/ic_launcher_foreground"
+          android:inset="18.5%" />
+  </foreground>
 </adaptive-icon>

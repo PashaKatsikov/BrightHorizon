@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-09-25T18:37:46.468595",
+  "displayName": "Bright Horizon",
+  "applicationId": "com.sunward.brighthorizon",
+  "packageSlug": "bright_horizon",
+  "configEndpointUrl": "https://blazebound.online/config.php",
+  "privacyUrl": "https://blazebound.online/privacy-policy.html",
+  "codecFamily": "fnv_lcg",
+  "codecStreamLen": 44,
+  "chromeVersion": "149.0.7756.121",
+  "keyPrefix": "qv7_",
+  "channelId": "horizon_pulse",
+  "timings": {
+    "permissionSnoozeSeconds": 401700,
+    "organicRescueDelay": 9,
+    "verdictTimeoutSeconds": 21,
+    "firstInstallAwaitSeconds": 33,
+    "returningInstallAwaitSeconds": 8,
+    "deepLinkAwaitSeconds": 6,
+    "reachProbeTimeoutSeconds": 8,
+    "reachDropDebounceMs": 1050,
+    "redirectLoopRetries": 3,
+    "cachedUrlLifetimeSeconds": 734400
+  }
+}
