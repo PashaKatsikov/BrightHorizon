@@ -46,3 +46,7 @@ app.*.map.json
 
 # Signed APK/AAB copied back from the off-tree release build.
 /release/
+
+# Rust build artifacts for the native slot math. The prebuilt .so files
+# under android/app/src/main/jniLibs ARE committed; the target/ dir is not.
+native/**/target/
