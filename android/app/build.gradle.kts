@@ -45,12 +45,10 @@ android {
 
     defaultConfig {
         applicationId = "com.sunward.brighthorizon"
-        // API 26 is the floor the current Firebase + AppsFlyer +
-        // flutter_local_notifications versions still support. Do not raise
-        // it without a dependency that literally refuses to build — every
-        // extra API level removes eligible installs.
-        minSdk = 26
-        targetSdk = 35
+        // Store floor is API 24. java.time below 26 is covered by core
+        // library desugaring above.
+        minSdk = 24
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

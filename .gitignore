@@ -67,3 +67,6 @@ native/**/target/
 
 # Local dev scratch under tool/ (screenshots, UI dumps, one-off scripts).
 tool/_*
+
+# Signed APK/AAB copied back from the off-tree release build.
+/release/
