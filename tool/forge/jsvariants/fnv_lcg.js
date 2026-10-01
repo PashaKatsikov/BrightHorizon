@@ -82,8 +82,15 @@
   var lifted = null;   // the fixed ancestor we transformed, if any
 
   function viewportH() {
-    return (window.visualViewport && window.visualViewport.height) ||
-      window.innerHeight;
+    // Use the LAYOUT viewport height, NOT visualViewport.height. The field
+    // position (getBoundingClientRect) and the Flutter-sent fraction are both
+    // measured against the layout viewport, which stays constant while the
+    // IME is open (the Android window never resizes for the keyboard — see
+    // MainActivity). Chrome shrinks visualViewport.height under the keyboard,
+    // which made kbTop too small (field flew up in portrait) and shrank the
+    // maxLift clamp (vh*0.9) so the lift fell short and the keyboard covered
+    // the field in landscape.
+    return window.innerHeight || document.documentElement.clientHeight;
   }
 
   function activeField() {

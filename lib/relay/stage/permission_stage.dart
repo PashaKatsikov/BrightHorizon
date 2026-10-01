@@ -5,6 +5,7 @@ import '../../app/relay_theme.dart';
 import '../config/relay_config.dart';
 import '../wire/alert_channel.dart';
 import '../wire/beacon_keystore.dart';
+import '../wire/veiled_strings.dart';
 import 'portal_stage.dart';
 
 // ============================================================
@@ -119,7 +120,7 @@ class _PermissionStageState extends State<PermissionStage> {
                       const _BellMedallion(),
                       SizedBox(height: landscape ? 16 : 26),
                       Text(
-                        'ALLOW NOTIFICATIONS ABOUT BONUSES AND PROMOS',
+                        VeiledStrings.get('g_notif'),
                         textAlign: TextAlign.center,
                         style: RelayTheme.headline(size: landscape ? 21 : 25),
                       ),

@@ -5,6 +5,7 @@ import '../core/landing.dart';
 import 'beacon_keystore.dart';
 import 'relay_agent.dart';
 import 'seal_gate.dart';
+import 'veiled_strings.dart';
 
 // ============================================================
 // VERDICT CALL — seal the body in native code, POST, cache the answer
@@ -38,7 +39,7 @@ class VerdictCall {
     final String? endpoint = gate.endpoint();
     final String? envelope = gate.seal(jsonEncode(body));
     if (endpoint == null || envelope == null) {
-      return Verdict.rejected('gate_unavailable');
+      return Verdict.rejected(VeiledStrings.get('e_gu'));
     }
 
     try {

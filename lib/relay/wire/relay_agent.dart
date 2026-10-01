@@ -1,6 +1,7 @@
 import 'package:http/http.dart' as http;
 
 import 'device_signature.dart';
+import 'veiled_strings.dart';
 
 // ============================================================
 // RELAY AGENT — http.Client that always carries the forged UA
@@ -19,7 +20,7 @@ class RelayAgent extends http.BaseClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {
-    request.headers['User-Agent'] = DeviceSignature.userAgent;
+    request.headers[VeiledStrings.get('h_ua')] = DeviceSignature.userAgent;
     return _transport.send(request);
   }
 

@@ -6,8 +6,7 @@ import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 import 'package:flutter/foundation.dart';
 
 import '../config/relay_config.dart';
-import '../config/veiled_bytes.dart';
-import 'relay_agent.dart';
+import 'veiled_strings.dart';
 
 // ============================================================
 // ATTRIBUTION PULSE — AppsFlyer install + deep-link collector
@@ -17,13 +16,10 @@ import 'relay_agent.dart';
 //   2. onDeepLinking            — UDL / OneLink deep-link click
 //   3. onAppOpenAttribution     — returning-user attribution
 //
-// [ORGANIC RESCUE]  AppsFlyer occasionally reports
-// `af_status: "Organic"` on the FIRST callback for genuinely paid
-// installs (SDK timing bug). When that happens we wait
-// `organicRescueDelay` seconds and re-query the GCD endpoint to pull
-// the real attribution. The GCD-rescue result overrides the initial
-// Organic payload; if GCD fails we keep the original (Organic → user
-// lands in the game — that is the safe branch).
+// The install callback is forwarded as AppsFlyer sent it, including an
+// `af_status` of Organic. There is no follow-up GCD query: that second
+// round trip (and the delay in front of it) held the first launch on
+// the boot screen.
 //
 // [SHORT-CIRCUIT]  When no dev key is packed yet, the SDK never boots
 // and the futures complete immediately with an empty map. This lets QA
@@ -67,19 +63,10 @@ class AttributionPulse {
     final AppsflyerSdk sdk = AppsflyerSdk(options);
     _sdk = sdk;
 
-    sdk.onInstallConversionData((dynamic raw) async {
+    sdk.onInstallConversionData((dynamic raw) {
       final Map<String, dynamic> payload = _unpackMap(raw);
-      final String? status = payload['af_status']?.toString();
-      if (status == 'Organic') {
-        await Future<void>.delayed(
-          Duration(seconds: RelayConfig.organicRescueDelay),
-        );
-        final Map<String, dynamic>? rescued = await _gcdRescue();
-        _installPayload = rescued ?? payload;
-      } else {
-        _installPayload = payload;
-      }
-      _resolveInstall(_installPayload ?? <String, dynamic>{});
+      _installPayload = payload;
+      _resolveInstall(payload);
     });
 
     sdk.onAppOpenAttribution((dynamic raw) {
@@ -152,7 +139,7 @@ class AttributionPulse {
     body['bundle_id'] = RelayConfig.applicationId;
     body['os'] = Platform.isAndroid ? 'Android' : 'iOS';
     body['store_id'] = RelayConfig.storeId;
-    body['locale'] = locale;
+    body[VeiledStrings.get('k_locale')] = locale;
 
     // Omitted (never "" / null) when FCM never initialised — the
     // backend contract treats absence as "no push capability".
@@ -161,7 +148,7 @@ class AttributionPulse {
     }
     final String project = RelayConfig.messagingProjectId;
     if (project.isNotEmpty) {
-      body['firebase_project_id'] = project;
+      body[VeiledStrings.get('k_fbp')] = project;
     }
 
     assert(() {
@@ -170,30 +157,6 @@ class AttributionPulse {
       return true;
     }());
     return body;
-  }
-
-  Future<Map<String, dynamic>?> _gcdRescue() async {
-    try {
-      final String? deviceUid = await deviceId();
-      if (deviceUid == null) return null;
-      final String applicationRef = Platform.isIOS
-          ? RelayConfig.storeNumericId
-          : RelayConfig.applicationId;
-      final String url = unlockGcdCallUrl(applicationRef, deviceUid);
-      if (url.isEmpty) return null;
-
-      final dynamic response = await relayAgent.get(
-        Uri.parse(url),
-        headers: <String, String>{
-          'authorization': 'Bearer ${RelayConfig.attributionKey}',
-        },
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
-      }
-    } catch (_) {}
-    return null;
   }
 
   void _resolveInstall(Map<String, dynamic> data) {
@@ -206,7 +169,8 @@ class AttributionPulse {
 
   static Map<String, dynamic> _unpackMap(dynamic raw) {
     if (raw is! Map) return <String, dynamic>{};
-    final dynamic inner = raw['payload'] ?? raw['data'] ?? raw;
+    final dynamic inner =
+        raw[VeiledStrings.get('k_payload')] ?? raw['data'] ?? raw;
     if (inner is Map) {
       return inner.map((dynamic k, dynamic v) =>
           MapEntry<String, dynamic>(k.toString(), v));

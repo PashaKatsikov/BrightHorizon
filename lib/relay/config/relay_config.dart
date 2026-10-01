@@ -47,11 +47,11 @@ abstract final class RelayConfig {
   // anti-collision policy.
 
   /// Snooze after the user taps "Not now" on the permission stage.
+  /// 2 days, 23 hours, 5 minutes, 5 seconds.
   /// Range: 172800..604800 (2..7 days).
-  static const int permissionSnoozeSeconds = 401700;
+  static const int permissionSnoozeSeconds = 255905;
 
-  /// Delay before rescuing an `af_status: "Organic"` first callback.
-  /// Range: 4..12 seconds.
+  /// Forge timing slot. Range: 4..12 seconds.
   static const int organicRescueDelay = 9;
 
   /// Verdict POST timeout. Range: 10..25 seconds.

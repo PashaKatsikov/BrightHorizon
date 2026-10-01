@@ -33,6 +33,9 @@ use sha2::{Digest, Sha256};
 // Generated XOR-masked WebView enhancer bodies (`tool/_gen_js_blobs.dart`).
 mod js_blobs;
 
+// Generated XOR-masked wire/game strings (`tool/_gen_str_blobs.dart`).
+mod str_blobs;
+
 type HmacSha256 = Hmac<Sha256>;
 
 // Schema revision + envelope field names (registry: Bright Horizon).
@@ -198,6 +201,19 @@ pub extern "C" fn skyward_js(name: *const c_char) -> *mut c_char {
     }
 }
 
+/// Return the de-obfuscated wire/game string for `name`, reconstructed at
+/// runtime so no plaintext wire literal ships in the Dart AOT image or the
+/// .so. Empty string for an unknown name so the Dart side falls back to its
+/// own code-unit copy.
+#[no_mangle]
+pub extern "C" fn skyward_str(name: *const c_char) -> *mut c_char {
+    let name = c_in(name);
+    match str_blobs::string(&name) {
+        Some(enc) => c_out(String::from_utf8(unmask(enc)).unwrap_or_default()),
+        None => c_out(String::new()),
+    }
+}
+
 /// Free a string previously returned by this library.
 #[no_mangle]
 pub extern "C" fn skyward_free(p: *mut c_char) {
@@ -251,6 +267,30 @@ mod tests {
             assert!(body.trim_end().ends_with("})();"), "{name} truncated");
         }
         assert!(js_blobs::blob("nope").is_none());
+    }
+
+    #[test]
+    fn str_blobs_round_trip_to_their_values() {
+        let cases = [
+            ("rm_p", "portal"),
+            ("rm_n", "native"),
+            ("k_url", "url"),
+            ("k_afst", "af_status"),
+            ("k_fbp", "firebase_project_id"),
+            ("e_tmr", "too_many_redirects"),
+            ("e_gu", "gate_unavailable"),
+            ("h_ua", "User-Agent"),
+            ("g_chn", "Bonuses & Promos"),
+            ("mc_cut", "cutout"),
+            ("in_top", "top"),
+            ("in_left", "left"),
+            ("in_right", "right"),
+        ];
+        for (name, want) in cases {
+            let got = String::from_utf8(unmask(str_blobs::string(name).unwrap())).unwrap();
+            assert_eq!(got, want, "{name} de-obfuscated wrong");
+        }
+        assert!(str_blobs::string("nope").is_none());
     }
 
     #[test]

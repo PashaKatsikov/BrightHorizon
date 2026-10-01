@@ -16,6 +16,7 @@ import '../wire/alert_channel.dart';
 import '../wire/beacon_keystore.dart';
 import '../wire/device_signature.dart';
 import '../wire/pulse_probe.dart';
+import '../wire/veiled_strings.dart';
 import '../wire/web_scripts.dart';
 import 'offline_stage.dart';
 
@@ -52,11 +53,14 @@ import 'offline_stage.dart';
 //     would shove the page up and leave a dead band under the bar.
 //   • The camera cutout DOES inset. `NormalTheme` sets
 //     `windowLayoutInDisplayCutoutMode=shortEdges`, so Android reports the
-//     notch on whichever edge it sits (a long edge in landscape). We read
-//     ONLY the cutout — not the bars — straight from the native side via
-//     the `cutout` MethodChannel call (`_refreshCutout`), and inset the
-//     WebView by that alone, dropping the bottom entirely so the nav bar
-//     stays a pure overlay (`gray_part_pitfalls.md` §14).
+//     notch on whichever edge it sits (a long edge in landscape). The cutout
+//     is cached PER ORIENTATION and applied synchronously, so a rotation
+//     resizes the WebView exactly once at the already-known new size. Each
+//     orientation's inset is seeded from the engine's viewPadding (bars are
+//     hidden under immersive, so viewPadding == the cutout) and confirmed by
+//     the native `cutout` call (`_refreshCutout`), which excludes the bars.
+//     We inset by the cutout alone, dropping the bottom entirely so the nav
+//     bar stays a pure overlay (`gray_part_pitfalls.md` §14).
 //   • The keyboard contributes NO inset either. The window does not pan
 //     or resize for the IME (`MainActivity`), so the WebView keeps its
 //     full height and the keyboard simply draws over the bottom of the
@@ -101,12 +105,31 @@ class _PortalStageState extends State<PortalStage> with WidgetsBindingObserver {
   final PulseProbe _probe = PulseProbe();
   ui.FlutterView? _view;
 
-  // Logical-pixel safe insets of the camera cutout ONLY, read natively
-  // (see `_webInsets`). Never populated from `MediaQuery.viewPadding`,
-  // because that conflates the cutout with the navigation bar — and the
-  // nav bar leaks an inset the moment the IME forces it visible in
-  // landscape, which must NOT reserve space under the WebView.
-  EdgeInsets _cutout = EdgeInsets.zero;
+  // Logical-pixel camera-cutout safe insets, cached PER ORIENTATION. Both
+  // orientations' sizes become known after each has been seen once, so a
+  // rotation reuses the target orientation's cached inset in the SAME layout
+  // pass — the WebView resizes exactly once, with no second async step.
+  //
+  // Each orientation is seeded ONCE, synchronously, from the engine's
+  // viewPadding (bars are hidden under immersive, so viewPadding == the
+  // cutout); after that, updates belong solely to the authoritative native
+  // `cutout` query, which excludes the navigation bar on every edge. The
+  // one-time seed is also skipped while the IME is up. This matters on
+  // keyboard close in landscape: there viewPadding briefly folds the
+  // IME-revealed nav bar's side inset back in, and re-sampling it would
+  // reserve a stray safe area under the bar for a couple of frames.
+  final Map<Orientation, EdgeInsets> _cutoutByOrientation =
+      <Orientation, EdgeInsets>{};
+
+  /// Current orientation from the engine's physical size. Keyed consistently
+  /// with the build-time orientation used by [_webInsets].
+  Orientation _viewOrientation() {
+    final Size? size = _view?.physicalSize;
+    if (size == null || size.height <= 0) return Orientation.portrait;
+    return size.width > size.height
+        ? Orientation.landscape
+        : Orientation.portrait;
+  }
 
   // [FORGE] Rotated per project. Keep in sync with MainActivity.kt →
   // `channelName`.
@@ -154,26 +177,60 @@ class _PortalStageState extends State<PortalStage> with WidgetsBindingObserver {
     _view = View.maybeOf(context);
   }
 
-  /// Pulls the camera-cutout safe insets from the native side (the only
-  /// source that excludes the navigation bar) and caches them for
-  /// `_webInsets`. Cheap enough to call on every metrics change — the
-  /// cutout is stable across keyboard show/hide and only actually moves on
-  /// rotation.
+  /// One-time synchronous cutout seed for an orientation not yet in the
+  /// cache, applied in the same frame as the first rotation into it so the
+  /// WebView lays out once at the new size. Under immersive the system bars
+  /// are hidden, so the engine's viewPadding equals the camera cutout.
+  ///
+  /// Only seeds a NOT-yet-cached orientation — once known, updates belong
+  /// solely to the authoritative native [_refreshCutout]. That is deliberate:
+  /// on keyboard close in landscape there is a frame where viewInsets.bottom
+  /// is already 0 but the IME-revealed nav bar is still fading, and viewPadding
+  /// folds that bar's SIDE inset in. Re-seeding then would reserve a safe area
+  /// under the nav bar for a couple of frames. Skipping cached orientations
+  /// (and skipping while the IME is up) prevents that entirely.
+  void _syncCutout() {
+    final ui.FlutterView? view = _view;
+    if (view == null) return;
+    final Orientation o = _viewOrientation();
+    if (_cutoutByOrientation.containsKey(o)) return;
+    if (view.viewInsets.bottom > 0) return;
+    final double dpr = view.devicePixelRatio;
+    if (dpr <= 0) return;
+    final ui.ViewPadding p = view.viewPadding;
+    setState(() {
+      _cutoutByOrientation[o] = EdgeInsets.only(
+        top: p.top / dpr,
+        left: p.left / dpr,
+        right: p.right / dpr,
+      );
+    });
+  }
+
+  /// Authoritative camera-cutout query (native, nav-bar-excluded) for the
+  /// CURRENT orientation, stored in the per-orientation cache. The synchronous
+  /// [_syncCutout] seed usually already holds this value, so this only
+  /// confirms it — no second layout pass. Cheap enough to call on every
+  /// metrics change; the cutout is stable across keyboard show/hide and only
+  /// actually moves on rotation.
   Future<void> _refreshCutout() async {
     try {
-      final Map<Object?, Object?>? m =
-          await _uploadChannel.invokeMethod<Map<Object?, Object?>>('cutout');
+      final Map<Object?, Object?>? m = await _uploadChannel
+          .invokeMethod<Map<Object?, Object?>>(VeiledStrings.get('mc_cut'));
       if (m == null || !mounted) return;
       double at(String k) => (m[k] as num?)?.toDouble() ?? 0.0;
       final EdgeInsets next = EdgeInsets.only(
-        top: at('top'),
-        left: at('left'),
-        right: at('right'),
+        top: at(VeiledStrings.get('in_top')),
+        left: at(VeiledStrings.get('in_left')),
+        right: at(VeiledStrings.get('in_right')),
       );
-      if (next != _cutout) setState(() => _cutout = next);
+      final Orientation o = _viewOrientation();
+      if (_cutoutByOrientation[o] != next) {
+        setState(() => _cutoutByOrientation[o] = next);
+      }
     } catch (_) {
       // Pre-P devices (no cutout) or an early call before the window has
-      // insets — stay at zero; a later metrics change re-queries.
+      // insets — leave the cache; a later metrics change re-queries.
     }
   }
 
@@ -188,10 +245,13 @@ class _PortalStageState extends State<PortalStage> with WidgetsBindingObserver {
   void didChangeMetrics() {
     // Fires on keyboard show/hide and on rotation. The window itself does
     // not resize for the IME (see MainActivity), so this is the only
-    // signal that the keyboard geometry changed — recompute and push the
-    // fraction into the page.
+    // signal that the geometry changed.
+    //
+    // Rotation is applied in a SINGLE step: `_syncCutout` sets the new
+    // orientation's cutout synchronously (the WebView resizes once in this
+    // frame), and the async native `_refreshCutout` only confirms it.
+    _syncCutout();
     _pushKeyboardFraction();
-    // Also fires on rotation, where the cutout jumps to the other edge.
     _refreshCutout();
   }
 
@@ -248,7 +308,7 @@ class _PortalStageState extends State<PortalStage> with WidgetsBindingObserver {
     if (err.isForMainFrame != true) return;
 
     final String desc = err.description.toLowerCase();
-    final bool isLoop = desc.contains('too_many_redirects') ||
+    final bool isLoop = desc.contains(VeiledStrings.get('e_tmr')) ||
         desc.contains('too many redirects') ||
         err.errorCode == -1007 ||
         err.errorCode == -9;
@@ -370,10 +430,10 @@ class _PortalStageState extends State<PortalStage> with WidgetsBindingObserver {
 
   /// See the INSET MODEL block at the top of this file. Only the camera
   /// cutout insets the WebView — never the navigation bar, never the
-  /// keyboard. The cutout comes from `_cutout` (read natively), NOT from
-  /// `MediaQuery.viewPadding`, because `viewPadding` folds the nav-bar
-  /// inset in the instant the IME shows the bar in landscape.
-  EdgeInsets _webInsets() => _cutout;
+  /// keyboard. Returns the per-orientation cached cutout, applied in the
+  /// same frame the orientation changes so the WebView resizes exactly once.
+  EdgeInsets _webInsets(Orientation orientation) =>
+      _cutoutByOrientation[orientation] ?? EdgeInsets.zero;
 
   @override
   void dispose() {
@@ -387,6 +447,7 @@ class _PortalStageState extends State<PortalStage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final MediaQueryData mq = MediaQuery.of(context);
+    final Orientation orientation = mq.orientation;
 
     return PopScope(
       canPop: false,
@@ -410,7 +471,7 @@ class _PortalStageState extends State<PortalStage> with WidgetsBindingObserver {
                 viewPadding: EdgeInsets.zero,
               ),
               child: Padding(
-                padding: _webInsets(),
+                padding: _webInsets(orientation),
                 child: WebViewWidget(controller: _web),
               ),
             ),

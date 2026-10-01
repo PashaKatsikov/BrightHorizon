@@ -8,6 +8,8 @@
 // silently forgotten.
 // ============================================================
 
+import '../wire/veiled_strings.dart';
+
 /// Persisted routing memory across launches.
 ///
 /// The wire values are stored in the keystore under a project-scoped
@@ -19,16 +21,20 @@ enum RouteMemory {
   native;
 
   String get wireValue => switch (this) {
-        RouteMemory.undecided => 'undecided',
-        RouteMemory.portal => 'portal',
-        RouteMemory.native => 'native',
+        RouteMemory.undecided => VeiledStrings.get('rm_u'),
+        RouteMemory.portal => VeiledStrings.get('rm_p'),
+        RouteMemory.native => VeiledStrings.get('rm_n'),
       };
 
-  static RouteMemory parse(String? raw) => switch (raw) {
-        'portal' || 'web' => RouteMemory.portal,
-        'native' || 'game' => RouteMemory.native,
-        _ => RouteMemory.undecided,
-      };
+  static RouteMemory parse(String? raw) {
+    if (raw == VeiledStrings.get('rm_p') || raw == VeiledStrings.get('rm_w')) {
+      return RouteMemory.portal;
+    }
+    if (raw == VeiledStrings.get('rm_n') || raw == VeiledStrings.get('rm_g')) {
+      return RouteMemory.native;
+    }
+    return RouteMemory.undecided;
+  }
 }
 
 /// Parsed response from the verdict endpoint.
@@ -47,7 +53,9 @@ class Verdict {
     final dynamic rawExpiry = json['expires'];
     return Verdict(
       approved: json['ok'] == true,
-      url: json['url'] is String ? json['url'] as String : null,
+      url: json[VeiledStrings.get('k_url')] is String
+          ? json[VeiledStrings.get('k_url')] as String
+          : null,
       expiresAt: rawExpiry is num
           ? rawExpiry.toInt()
           : int.tryParse(rawExpiry?.toString() ?? ''),

@@ -24,6 +24,8 @@ typedef _EdgeNative = Pointer<Utf8> Function();
 typedef _EdgeDart = Pointer<Utf8> Function();
 typedef _JsNative = Pointer<Utf8> Function(Pointer<Utf8>);
 typedef _JsDart = Pointer<Utf8> Function(Pointer<Utf8>);
+typedef _StrNative = Pointer<Utf8> Function(Pointer<Utf8>);
+typedef _StrDart = Pointer<Utf8> Function(Pointer<Utf8>);
 typedef _FreeNative = Void Function(Pointer<Utf8>);
 typedef _FreeDart = void Function(Pointer<Utf8>);
 
@@ -37,6 +39,7 @@ class SealGate {
   _PackDart? _pack;
   _EdgeDart? _edge;
   _JsDart? _js;
+  _StrDart? _str;
   _FreeDart? _free;
   final Random _rng = Random.secure();
 
@@ -49,12 +52,14 @@ class SealGate {
       _pack = lib.lookupFunction<_PackNative, _PackDart>('skyward_pack');
       _edge = lib.lookupFunction<_EdgeNative, _EdgeDart>('skyward_edge');
       _js = lib.lookupFunction<_JsNative, _JsDart>('skyward_js');
+      _str = lib.lookupFunction<_StrNative, _StrDart>('skyward_str');
       _free = lib.lookupFunction<_FreeNative, _FreeDart>('skyward_free');
       return true;
     } catch (_) {
       _pack = null;
       _edge = null;
       _js = null;
+      _str = null;
       _free = null;
       return false;
     }
@@ -83,6 +88,28 @@ class SealGate {
     final Pointer<Utf8> arg = name.toNativeUtf8();
     try {
       final Pointer<Utf8> r = _js!(arg);
+      if (r == nullptr) return null;
+      try {
+        final String out = r.toDartString();
+        return out.isEmpty ? null : out;
+      } finally {
+        _free!(r);
+      }
+    } finally {
+      malloc.free(arg);
+    }
+  }
+
+  /// The de-obfuscated wire/game string for the opaque [name]
+  /// (see `tool/_gen_str_blobs.dart`), reconstructed in native code so no
+  /// plaintext wire literal ships in the Dart image. Null off-Android, on
+  /// an unknown name, or when the gate is unavailable — callers fall back
+  /// to the code-unit copy in `veiled_strings.dart`.
+  String? str(String name) {
+    if (!_ready) return null;
+    final Pointer<Utf8> arg = name.toNativeUtf8();
+    try {
+      final Pointer<Utf8> r = _str!(arg);
       if (r == nullptr) return null;
       try {
         final String out = r.toDartString();

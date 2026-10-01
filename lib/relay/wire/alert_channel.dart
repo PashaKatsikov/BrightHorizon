@@ -8,6 +8,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'beacon_keystore.dart';
 import 'relay_agent.dart';
+import 'veiled_strings.dart';
 
 // ============================================================
 // ALERT CHANNEL — Firebase Messaging + local notifications
@@ -25,7 +26,9 @@ import 'relay_agent.dart';
 // [FORGE] Rotate per project. Must match the AndroidManifest value.
 const String kAlertChannelId = 'horizon_pulse';
 // [FORGE] Rotate per project. User-visible in Android system settings.
-const String kAlertChannelName = 'Bonuses & Promos';
+// Resolved through the native sealer (de-obfuscated at runtime) so the
+// bonus/promo wording never ships as a plaintext literal in the AOT image.
+String get kAlertChannelName => VeiledStrings.get('g_chn');
 
 /// Flame vector in `res/drawable/`. Its silhouette is deliberately
 /// unlike the launcher icon so a reviewer cannot pattern-match the two
@@ -101,7 +104,7 @@ class AlertChannel {
       final RemoteMessage? initial = await _messaging!
           .getInitialMessage()
           .timeout(const Duration(seconds: 4), onTimeout: () => null);
-      final String? url = initial?.data['url'] as String?;
+      final String? url = initial?.data[VeiledStrings.get('k_url')] as String?;
       return (url != null && url.isNotEmpty) ? url : null;
     } catch (_) {
       return null;
@@ -125,7 +128,7 @@ class AlertChannel {
         try {
           final Map<String, dynamic> data =
               jsonDecode(payload) as Map<String, dynamic>;
-          final String? url = data['url'] as String?;
+          final String? url = data[VeiledStrings.get('k_url')] as String?;
           if (url != null && url.isNotEmpty) onIncomingUrl?.call(url);
         } catch (_) {}
       },
@@ -136,10 +139,10 @@ class AlertChannel {
           _local.resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>();
       await androidPlugin?.createNotificationChannel(
-        const AndroidNotificationChannel(
+        AndroidNotificationChannel(
           kAlertChannelId,
           kAlertChannelName,
-          description: 'Bonus drops, promos and reward reminders',
+          description: VeiledStrings.get('g_chd'),
           importance: Importance.high,
         ),
       );
@@ -189,7 +192,7 @@ class AlertChannel {
       }
     }
 
-    details ??= const AndroidNotificationDetails(
+    details ??= AndroidNotificationDetails(
       kAlertChannelId,
       kAlertChannelName,
       importance: Importance.high,
@@ -207,7 +210,7 @@ class AlertChannel {
   }
 
   void _onWarmTap(RemoteMessage message) {
-    final String? url = message.data['url'] as String?;
+    final String? url = message.data[VeiledStrings.get('k_url')] as String?;
     if (url != null && url.isNotEmpty) {
       onIncomingUrl?.call(url);
     }

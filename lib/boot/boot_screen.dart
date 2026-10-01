@@ -262,7 +262,7 @@ class _BootScreenState extends State<BootScreen>
                         child: LinearProgressIndicator(
                           value: _shown.clamp(0.0, 1.0),
                           backgroundColor: const Color(0x55FFFFFF),
-                          color: gold,
+                          color: violet,
                         ),
                       ),
                     ),

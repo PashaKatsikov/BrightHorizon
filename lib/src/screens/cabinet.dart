@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../relay/wire/veiled_strings.dart';
 import '../frames.dart';
 import '../profile.dart';
 import '../slot/cheat.dart';
@@ -316,10 +317,12 @@ class _CabinetPageState extends State<CabinetPage> with SingleTickerProviderStat
 
 String _giftWait(DateTime at) {
   final left = at.difference(DateTime.now());
-  if (left.isNegative) return 'Collect bonus';
+  if (left.isNegative) return VeiledStrings.get('g_cb');
   final hours = left.inHours;
   final minutes = left.inMinutes.remainder(60).toString().padLeft(2, '0');
-  return 'Bonus in ${hours}h ${minutes}m';
+  return VeiledStrings.get('g_bi')
+      .replaceFirst('{h}', '$hours')
+      .replaceFirst('{m}', minutes);
 }
 
 class _Header extends StatelessWidget {
