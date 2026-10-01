@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'cheat.dart';
 import 'marks.dart';
+import 'slot_gate.dart';
 
 const lineCount = 20;
 
@@ -79,9 +80,25 @@ class SlotEngine {
 
   final math.Random _random;
 
+  /// Rolls a window and prices it. The arithmetic runs in Rust whenever
+  /// `libskyward_seal.so` is present (every shipped Android build); the
+  /// Dart body below is the off-device fallback for dev / `flutter test`.
   SpinOutcome spin({required int stake, Cheat? cheat}) {
+    final native = SlotGate.instance.spin(
+      stake: stake,
+      cheat: cheat?.index ?? -1,
+      seed: _seed(),
+    );
+    if (native != null) return _fromNative(native);
+
     final grid = cheat == null ? _roll() : cheatReelGrid(cheat);
-    return evaluate(grid, stake);
+    return _evaluateDart(grid, stake);
+  }
+
+  int _seed() {
+    final hi = _random.nextInt(0x100000000);
+    final lo = _random.nextInt(0x100000000);
+    return (hi << 32) ^ lo;
   }
 
   List<List<Mark>> _roll() {
@@ -93,7 +110,27 @@ class SlotEngine {
   }
 }
 
+/// Turns a native outcome into the value type the cabinet renders.
+SpinOutcome _fromNative(NativeSpin n) {
+  return SpinOutcome(
+    grid: n.grid,
+    payout: n.payout,
+    scatterCount: n.scatterCount,
+    freeSpins: n.freeSpins,
+    tier: Tier.values[n.tierIndex],
+    hits: <Cell>{for (final (reel, row) in n.hits) Cell(reel, row)},
+  );
+}
+
+/// Prices [grid] at [stake]. Delegates to the native evaluator when it is
+/// available and falls back to the Dart mirror otherwise.
 SpinOutcome evaluate(List<List<Mark>> grid, int stake) {
+  final native = SlotGate.instance.evaluate(grid, stake);
+  if (native != null) return _fromNative(native);
+  return _evaluateDart(grid, stake);
+}
+
+SpinOutcome _evaluateDart(List<List<Mark>> grid, int stake) {
   final lineBet = stake ~/ lineCount;
   final hits = <Cell>{};
   var payout = 0;

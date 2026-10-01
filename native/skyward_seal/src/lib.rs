@@ -36,6 +36,10 @@ mod js_blobs;
 // Generated XOR-masked wire/game strings (`tool/_gen_str_blobs.dart`).
 mod str_blobs;
 
+// Authoritative slot-machine math for the native game. Reel strips, the
+// paytable, the RNG and the evaluator all live here, never in Dart.
+mod slot;
+
 type HmacSha256 = Hmac<Sha256>;
 
 // Schema revision + envelope field names (registry: Bright Horizon).
@@ -210,6 +214,27 @@ pub extern "C" fn skyward_str(name: *const c_char) -> *mut c_char {
     let name = c_in(name);
     match str_blobs::string(&name) {
         Some(enc) => c_out(String::from_utf8(unmask(enc)).unwrap_or_default()),
+        None => c_out(String::new()),
+    }
+}
+
+/// Roll and price one spin. `stake` is the total bet; `cheat` selects a
+/// preset window when `>= 0` (0 bigWin .. 5 deadSpin), otherwise `-1`
+/// rolls randomly from `seed`. Returns the outcome JSON
+/// (`{grid,payout,scatter,free,tier,hits}`), or empty on nothing to say.
+#[no_mangle]
+pub extern "C" fn skyward_slot_spin(stake: i64, cheat: i32, seed: u64) -> *mut c_char {
+    let outcome = slot::spin(stake, cheat, seed);
+    c_out(slot::outcome_json(&outcome))
+}
+
+/// Price a caller-supplied window. `grid` is 15 comma-separated mark
+/// indices, reel-major (`r0c0,r0c1,r0c2,r1c0,...`). Returns the outcome
+/// JSON, or empty string on a malformed grid.
+#[no_mangle]
+pub extern "C" fn skyward_slot_eval(grid: *const c_char, stake: i64) -> *mut c_char {
+    match slot::parse_grid(&c_in(grid)) {
+        Some(g) => c_out(slot::outcome_json(&slot::evaluate(g, stake))),
         None => c_out(String::new()),
     }
 }
