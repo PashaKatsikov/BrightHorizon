@@ -1,0 +1,21 @@
+[package]
+name = "skyward_seal"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "skyward_seal"
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+sha2 = "0.10"
+hmac = "0.12"
+base64 = "0.22"
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
+codegen-units = 1
+panic = "abort"

@@ -1,0 +1,18 @@
+# Local Android cross-build config. We bypass cargo-ndk (it pulls
+# windows-sys, which needs dlltool that this host lacks) and point each
+# Android target straight at the NDK clang wrapper as the linker. The
+# crate has no C code, so no CC/AR is required. Build with the GNU host
+# toolchain so host build-scripts link without MSVC:
+#
+#   cargo +stable-x86_64-pc-windows-gnu build --release --target aarch64-linux-android
+#
+# NDK 27.0.12077973 under the default Android SDK location.
+
+[target.aarch64-linux-android]
+linker = "C:/Users/Paul/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android24-clang.cmd"
+
+[target.armv7-linux-androideabi]
+linker = "C:/Users/Paul/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/armv7a-linux-androideabi24-clang.cmd"
+
+[target.x86_64-linux-android]
+linker = "C:/Users/Paul/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/bin/x86_64-linux-android24-clang.cmd"

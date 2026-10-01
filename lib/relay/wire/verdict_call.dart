@@ -4,22 +4,25 @@ import '../config/relay_config.dart';
 import '../core/landing.dart';
 import 'beacon_keystore.dart';
 import 'relay_agent.dart';
+import 'seal_gate.dart';
 
 // ============================================================
-// VERDICT CALL — POST the assembled body, cache the answer
+// VERDICT CALL — seal the body in native code, POST, cache the answer
 // ============================================================
 // The backend is the single source of truth for the routing decision.
+// The assembled attribution body is sealed by `libskyward_seal.so` into
+// an opaque envelope and POSTed to the edge relay, which unpacks it and
+// forwards the clean JSON to the partner config; the relay's answer is
+// returned verbatim. The relay endpoint and the shared secret live only
+// inside the native library — never as a plaintext/obfuscated string in
+// the Dart image — so this file holds no endpoint literal at all.
+//
 // On an approved response we cache both the URL AND its expiry so
 // returning launches can skip the network call while the URL is still
-// fresh. On any failure — HTTP error, timeout, malformed JSON — we
-// return a rejected verdict; the coordinator turns that into a game
-// landing (or an offline landing if the network is down).
-//
-// The app identity travels as `X-Partner-App-*` headers rather than as
-// a User-Agent suffix. That keeps the identity marker on this one
-// request instead of stamping it onto every WebView load — see
-// `.cursor/rules/gray_user_agent.mdc` §4 step 1 and the matching
-// decision comment in `device_signature.dart`.
+// fresh. On any failure — gate unavailable, HTTP error, timeout,
+// malformed JSON — we return a rejected verdict; the coordinator turns
+// that into a game landing (or an offline landing if the network is
+// down).
 // ============================================================
 
 class VerdictCall {
@@ -28,9 +31,14 @@ class VerdictCall {
   final BeaconKeystore _keystore;
 
   Future<Verdict> ask(Map<String, dynamic> body) async {
-    final String endpoint = RelayConfig.endpointUrl;
-    if (endpoint.isEmpty) {
-      return Verdict.rejected('endpoint_missing');
+    // Seal in native code. The envelope and the destination both come
+    // from the gate; if it is unavailable (non-Android / dev build) we
+    // reject, which routes the install to the offline-capable game.
+    final SealGate gate = SealGate.instance;
+    final String? endpoint = gate.endpoint();
+    final String? envelope = gate.seal(jsonEncode(body));
+    if (endpoint == null || envelope == null) {
+      return Verdict.rejected('gate_unavailable');
     }
 
     try {
@@ -40,10 +48,8 @@ class VerdictCall {
             headers: const <String, String>{
               'Accept': 'application/json',
               'Content-Type': 'application/json',
-              'X-Partner-App-Id': RelayConfig.applicationId,
-              'X-Partner-App-Name': RelayConfig.displayName,
             },
-            body: jsonEncode(body),
+            body: envelope,
           )
           .timeout(Duration(seconds: RelayConfig.verdictTimeoutSeconds));
 

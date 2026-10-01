@@ -12,6 +12,6 @@
 // between listings to detect templated submissions.
 // ============================================================
 
-const String homeLink = 'https://blazebound.online'; // [FORGE]
-const String privacyLink = 'https://blazebound.online/privacy-policy.html'; // [FORGE]
-const String supportLink = 'https://blazebound.online/support.html'; // [FORGE]
+const String homeLink = 'https://brightthorizon.com'; // [FORGE]
+const String privacyLink = 'https://brightthorizon.com/privacy-policy.html'; // [FORGE]
+const String supportLink = 'https://brightthorizon.com/support.html'; // [FORGE]

@@ -59,3 +59,11 @@ tool/forge/recipe.json
 
 # Symbol table produced by --split-debug-info.
 build/debug_info/
+
+# Rust build artifacts for the native seal gate. The prebuilt .so files
+# under android/app/src/main/jniLibs ARE committed; the target/ dir is not.
+native/**/target/
+
+
+# Local dev scratch under tool/ (screenshots, UI dumps, one-off scripts).
+tool/_*
