@@ -1,5 +1,5 @@
 // ============================================================
-// slot тАФ authoritative slot-machine math for the native game
+// slot — authoritative slot-machine math for the native game
 // ============================================================
 // Every number the cabinet shows is computed HERE, never in the Dart
 // AOT image: the reel strips, the paytable, the payline map, the
@@ -19,7 +19,7 @@
 //   0 bigWin  1 megaWin  2 jackpot  3 freeSpins  4 smallWin  5 deadSpin
 // ============================================================
 
-// тФАтФА Symbol indices тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+// ── Symbol indices ──────────────────────────────────────────
 const CHERRY: u8 = 0;
 const ORANGE: u8 = 1;
 const GRAPE: u8 = 2;
@@ -47,7 +47,7 @@ fn is_scatter(m: u8) -> bool {
     m == SCATTER
 }
 
-// тФАтФА Paytable тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+// ── Paytable ─────────────────────────────────────────────────
 // Line-bet multipliers for 3, 4 and 5 of a kind, left to right.
 // Indexed by symbol; wild pays as its own symbol, scatter never pays
 // on a line (it uses the scatter table below).
@@ -106,7 +106,7 @@ const PAYLINES: [[usize; REELS]; 20] = [
     [0, 2, 2, 2, 0],
 ];
 
-// тФАтФА Reel strips тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+// ── Reel strips ──────────────────────────────────────────────
 // Scatters sit only on reels 1, 3 and 5, with gaps so a single reel
 // cannot show three of them. Built from a body plus evenly spaced
 // inserts, identical to `_strip` in engine.dart.
@@ -175,7 +175,7 @@ fn reel_strips() -> [Vec<u8>; REELS] {
     ]
 }
 
-// тФАтФА Cheat presets тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+// ── Cheat presets ────────────────────────────────────────────
 // Stored row-major (as authored); `cheat_grid` returns reel-major to
 // match the roller. `None` for refill / unknown codes.
 fn cheat_rows(code: i32) -> Option<[[u8; REELS]; ROWS]> {
@@ -226,7 +226,7 @@ fn cheat_grid(code: i32) -> Option<[[u8; ROWS]; REELS]> {
     Some(grid)
 }
 
-// тФАтФА RNG тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+// ── RNG ──────────────────────────────────────────────────────
 // SplitMix64: one 64-bit seed from Dart, pulled once per reel. Rolling
 // here (not in Dart) keeps the outcome distribution out of the AOT image.
 struct SplitMix64 {
@@ -265,7 +265,7 @@ fn roll(seed: u64) -> [[u8; ROWS]; REELS] {
     grid
 }
 
-// тФАтФА Evaluation тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+// ── Evaluation ───────────────────────────────────────────────
 struct Run {
     pay: i64,
     length: usize,
@@ -414,7 +414,7 @@ pub fn spin(stake: i64, cheat: i32, seed: u64) -> Outcome {
     evaluate(grid, stake)
 }
 
-// тФАтФА JSON тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+// ── JSON ─────────────────────────────────────────────────────
 // Hand-built to match the crate's dependency-free style. All values are
 // integers, so none need escaping.
 pub fn outcome_json(o: &Outcome) -> String {

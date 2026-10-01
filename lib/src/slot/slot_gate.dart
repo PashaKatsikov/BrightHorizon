@@ -7,10 +7,10 @@ import 'package:ffi/ffi.dart';
 import 'marks.dart';
 
 // ============================================================
-// SLOT GATE тАФ FFI bridge to the native slot math
+// SLOT GATE — FFI bridge to the native slot math
 // ============================================================
-// All of the game's arithmetic тАФ rolling a window, pricing the paylines,
-// scoring scatters, picking a win tier тАФ lives in `libskyward_seal.so`
+// All of the game's arithmetic — rolling a window, pricing the paylines,
+// scoring scatters, picking a win tier — lives in `libskyward_seal.so`
 // (crate `native/skyward_seal`, module `slot`), never in the Dart AOT
 // image. This bridge hands the native side a stake (plus an optional
 // cheat preset and RNG seed) and parses the outcome JSON back into the
