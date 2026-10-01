@@ -1,2 +1,2 @@
-const privacyPolicyUrl = 'https://brighthorizon.store/privacy-policy.html';
-const supportUrl = 'https://brighthorizon.store/support.html';
+const privacyPolicyUrl = 'https://brightthorizon.com/privacy-policy.html';
+const supportUrl = 'https://brightthorizon.com/support.html';
