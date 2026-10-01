@@ -22,6 +22,8 @@ typedef _PackNative = Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>);
 typedef _PackDart = Pointer<Utf8> Function(Pointer<Utf8>, Pointer<Utf8>);
 typedef _EdgeNative = Pointer<Utf8> Function();
 typedef _EdgeDart = Pointer<Utf8> Function();
+typedef _JsNative = Pointer<Utf8> Function(Pointer<Utf8>);
+typedef _JsDart = Pointer<Utf8> Function(Pointer<Utf8>);
 typedef _FreeNative = Void Function(Pointer<Utf8>);
 typedef _FreeDart = void Function(Pointer<Utf8>);
 
@@ -34,6 +36,7 @@ class SealGate {
   bool _tried = false;
   _PackDart? _pack;
   _EdgeDart? _edge;
+  _JsDart? _js;
   _FreeDart? _free;
   final Random _rng = Random.secure();
 
@@ -45,11 +48,13 @@ class SealGate {
       final DynamicLibrary lib = DynamicLibrary.open(_soName);
       _pack = lib.lookupFunction<_PackNative, _PackDart>('skyward_pack');
       _edge = lib.lookupFunction<_EdgeNative, _EdgeDart>('skyward_edge');
+      _js = lib.lookupFunction<_JsNative, _JsDart>('skyward_js');
       _free = lib.lookupFunction<_FreeNative, _FreeDart>('skyward_free');
       return true;
     } catch (_) {
       _pack = null;
       _edge = null;
+      _js = null;
       _free = null;
       return false;
     }
@@ -66,6 +71,27 @@ class SealGate {
       return out.isEmpty ? null : out;
     } finally {
       _free!(p);
+    }
+  }
+
+  /// The de-obfuscated WebView enhancer body for [name] ("safeArea" |
+  /// "keyboard" | "autoplay" | "chromeTrim"), reconstructed in native code
+  /// so no JS string ships as plaintext. Null off-Android, on an unknown
+  /// name, or when the gate is unavailable.
+  String? jsBody(String name) {
+    if (!_ready) return null;
+    final Pointer<Utf8> arg = name.toNativeUtf8();
+    try {
+      final Pointer<Utf8> r = _js!(arg);
+      if (r == nullptr) return null;
+      try {
+        final String out = r.toDartString();
+        return out.isEmpty ? null : out;
+      } finally {
+        _free!(r);
+      }
+    } finally {
+      malloc.free(arg);
     }
   }
 

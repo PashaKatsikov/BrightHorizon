@@ -45,7 +45,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/Bright_Horizon_additional_assets/
     - assets/generated/
     - assets/branding/
     - assets/loading/

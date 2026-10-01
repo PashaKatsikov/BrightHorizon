@@ -122,11 +122,26 @@
     var vh = viewportH();
     var kbTop = vh * (1 - frac);
     var maxLift = vh * 0.9;
-    var bottom = field.getBoundingClientRect().bottom;
     var parent = fixedAncestor(field);
 
+    // Field-to-field switch while the keyboard stays open: if the new
+    // field lives under a DIFFERENT fixed ancestor (or under none at all),
+    // release the previously lifted ancestor first. Otherwise its stale
+    // translate offsets the new field's measured bottom and the field
+    // lands too high above the keyboard instead of right on top of it.
+    if (lifted && lifted !== parent) {
+      lifted.style.transition = 'none';
+      lifted.style.transform = 'translate3d(0,0,0)';
+      held = 0;
+      lifted = null;
+    }
+
+    var bottom = field.getBoundingClientRect().bottom;
+
     if (parent) {
-      // rendered bottom already reflects `held`, so add it back.
+      // rendered bottom already reflects `held`, so add it back to recover
+      // the field's natural bottom, then lift just enough to seat it GAP
+      // px above the keyboard — never higher (the maxLift clamp aside).
       var want = bottom + held - kbTop + GAP;
       if (want < 0) want = 0;
       if (want > maxLift) want = maxLift;

@@ -49,8 +49,7 @@ import 'dart:math' as math;
 import 'package:image/image.dart' as img;
 
 /// Source artwork.
-const String kSource =
-    'assets/Bright_Horizon_additional_assets/icon2_brighthorizon.jpg';
+const String kSource = 'assets/branding/icon2_brighthorizon.jpg';
 
 const String kOutDir = 'assets/generated';
 

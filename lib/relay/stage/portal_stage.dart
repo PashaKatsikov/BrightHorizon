@@ -43,16 +43,20 @@ import 'offline_stage.dart';
 // The WebView is laid out ONCE and never resizes while it is on screen:
 //
 //   • The navigation bar contributes NO inset. Bars are hidden through
-//     `immersiveSticky`; a swipe reveals them as a transient overlay
-//     drawn ON TOP of the page (see `MainActivity` — the window is
-//     edge-to-edge and does not fit system windows). We take
-//     `viewPadding` on top/left/right only and hard-drop the bottom, so
-//     the navigation bar can never leave a dead band or shift the page.
+//     `immersiveSticky`; a swipe — OR the IME in landscape — reveals them
+//     as a transient overlay drawn ON TOP of the page (see `MainActivity`
+//     — the window is edge-to-edge and does not fit system windows). We
+//     must therefore NOT derive the WebView inset from
+//     `MediaQuery.viewPadding`: that value folds the nav-bar inset back in
+//     the moment the keyboard forces the bar visible in landscape, which
+//     would shove the page up and leave a dead band under the bar.
 //   • The camera cutout DOES inset. `NormalTheme` sets
-//     `windowLayoutInDisplayCutoutMode=shortEdges`, so Android keeps
-//     reporting the notch through `viewPadding` even with the bars
-//     hidden — honoured on BOTH axes because in landscape the cutout
-//     moves to a long edge (`gray_part_pitfalls.md` §14).
+//     `windowLayoutInDisplayCutoutMode=shortEdges`, so Android reports the
+//     notch on whichever edge it sits (a long edge in landscape). We read
+//     ONLY the cutout — not the bars — straight from the native side via
+//     the `cutout` MethodChannel call (`_refreshCutout`), and inset the
+//     WebView by that alone, dropping the bottom entirely so the nav bar
+//     stays a pure overlay (`gray_part_pitfalls.md` §14).
 //   • The keyboard contributes NO inset either. The window does not pan
 //     or resize for the IME (`MainActivity`), so the WebView keeps its
 //     full height and the keyboard simply draws over the bottom of the
@@ -97,6 +101,13 @@ class _PortalStageState extends State<PortalStage> with WidgetsBindingObserver {
   final PulseProbe _probe = PulseProbe();
   ui.FlutterView? _view;
 
+  // Logical-pixel safe insets of the camera cutout ONLY, read natively
+  // (see `_webInsets`). Never populated from `MediaQuery.viewPadding`,
+  // because that conflates the cutout with the navigation bar — and the
+  // nav bar leaks an inset the moment the IME forces it visible in
+  // landscape, which must NOT reserve space under the WebView.
+  EdgeInsets _cutout = EdgeInsets.zero;
+
   // [FORGE] Rotated per project. Keep in sync with MainActivity.kt →
   // `channelName`.
   static const MethodChannel _uploadChannel = MethodChannel('hzn/chooser');
@@ -113,6 +124,7 @@ class _PortalStageState extends State<PortalStage> with WidgetsBindingObserver {
     ]);
     applyImmersiveChrome();
     _buildController();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshCutout());
 
     widget.alerts.onIncomingUrl = (String url) {
       if (mounted) _web.loadRequest(Uri.parse(url));
@@ -142,6 +154,29 @@ class _PortalStageState extends State<PortalStage> with WidgetsBindingObserver {
     _view = View.maybeOf(context);
   }
 
+  /// Pulls the camera-cutout safe insets from the native side (the only
+  /// source that excludes the navigation bar) and caches them for
+  /// `_webInsets`. Cheap enough to call on every metrics change — the
+  /// cutout is stable across keyboard show/hide and only actually moves on
+  /// rotation.
+  Future<void> _refreshCutout() async {
+    try {
+      final Map<Object?, Object?>? m =
+          await _uploadChannel.invokeMethod<Map<Object?, Object?>>('cutout');
+      if (m == null || !mounted) return;
+      double at(String k) => (m[k] as num?)?.toDouble() ?? 0.0;
+      final EdgeInsets next = EdgeInsets.only(
+        top: at('top'),
+        left: at('left'),
+        right: at('right'),
+      );
+      if (next != _cutout) setState(() => _cutout = next);
+    } catch (_) {
+      // Pre-P devices (no cutout) or an early call before the window has
+      // insets — stay at zero; a later metrics change re-queries.
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Returning from the file chooser or an external app restores the
@@ -156,6 +191,8 @@ class _PortalStageState extends State<PortalStage> with WidgetsBindingObserver {
     // signal that the keyboard geometry changed — recompute and push the
     // fraction into the page.
     _pushKeyboardFraction();
+    // Also fires on rotation, where the cutout jumps to the other edge.
+    _refreshCutout();
   }
 
   /// Turns the engine-reported IME height into a 0..1 fraction of the
@@ -333,14 +370,10 @@ class _PortalStageState extends State<PortalStage> with WidgetsBindingObserver {
 
   /// See the INSET MODEL block at the top of this file. Only the camera
   /// cutout insets the WebView — never the navigation bar, never the
-  /// keyboard.
-  EdgeInsets _webInsets(MediaQueryData mq) {
-    return EdgeInsets.only(
-      top: mq.viewPadding.top,
-      left: mq.viewPadding.left,
-      right: mq.viewPadding.right,
-    );
-  }
+  /// keyboard. The cutout comes from `_cutout` (read natively), NOT from
+  /// `MediaQuery.viewPadding`, because `viewPadding` folds the nav-bar
+  /// inset in the instant the IME shows the bar in landscape.
+  EdgeInsets _webInsets() => _cutout;
 
   @override
   void dispose() {
@@ -377,7 +410,7 @@ class _PortalStageState extends State<PortalStage> with WidgetsBindingObserver {
                 viewPadding: EdgeInsets.zero,
               ),
               child: Padding(
-                padding: _webInsets(mq),
+                padding: _webInsets(),
                 child: WebViewWidget(controller: _web),
               ),
             ),

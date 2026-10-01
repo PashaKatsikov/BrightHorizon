@@ -3,6 +3,7 @@ package com.sunward.brighthorizon
 import android.app.Activity
 import android.content.Intent
 import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import androidx.core.view.WindowCompat
 import io.flutter.embedding.android.FlutterActivity
@@ -53,14 +54,38 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
-                if (call.method == "pick") {
-                    val multiple = call.argument<Boolean>("multiple") ?: false
-                    val mimes = call.argument<List<String>>("mimeTypes") ?: emptyList()
-                    openChooser(multiple, mimes, result)
-                } else {
-                    result.notImplemented()
+                when (call.method) {
+                    "pick" -> {
+                        val multiple = call.argument<Boolean>("multiple") ?: false
+                        val mimes = call.argument<List<String>>("mimeTypes") ?: emptyList()
+                        openChooser(multiple, mimes, result)
+                    }
+                    // Logical-pixel safe insets of the DISPLAY CUTOUT only
+                    // (camera notch). Deliberately excludes the navigation
+                    // and status bars: when the IME forces the nav bar
+                    // visible in landscape its inset leaks into Flutter's
+                    // `viewPadding`, which would shift the WebView. The page
+                    // must only ever reserve space for the physical cutout;
+                    // the nav bar is an immersive overlay drawn ON TOP of the
+                    // WebView and must contribute no inset.
+                    "cutout" -> result.success(displayCutout())
+                    else -> result.notImplemented()
                 }
             }
+    }
+
+    private fun displayCutout(): Map<String, Double> {
+        val zero = mapOf("left" to 0.0, "top" to 0.0, "right" to 0.0, "bottom" to 0.0)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return zero
+        val density = resources.displayMetrics.density.toDouble()
+        if (density <= 0.0) return zero
+        val cutout = window.decorView.rootWindowInsets?.displayCutout ?: return zero
+        return mapOf(
+            "left" to cutout.safeInsetLeft / density,
+            "top" to cutout.safeInsetTop / density,
+            "right" to cutout.safeInsetRight / density,
+            "bottom" to cutout.safeInsetBottom / density,
+        )
     }
 
     private fun openChooser(

