@@ -1,14 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-import 'audio.dart';
-
-const ink = Color(0xFF100818);
-const panel = Color(0xD916102C);
-const gold = Color(0xFFF0C14B);
-const goldDeep = Color(0xFFC48A22);
+const ink = Color(0xFF070418);
+const panel = Color(0xD9100824);
+const gold = Color(0xFFE8C872);
+const neon = Color(0xFF5CE1FF);
 const violet = Color(0xFFC9A6FF);
-const cream = Color(0xFFF6F0FF);
-const muted = Color(0xFFCBBBE4);
+const cream = Color(0xFFF4F7FF);
+const muted = Color(0xFFB7C0DC);
+
+/// The cabinet is portrait-only. [lockLandscape] keeps the old name because
+/// the relay boot on android-gray-part calls it the moment the arcade opens.
+Future<void> lockPortrait() async {
+  await SystemChrome.setPreferredOrientations(const [
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+  for (var i = 0; i < 40; i++) {
+    final views = WidgetsBinding.instance.platformDispatcher.views;
+    if (views.isNotEmpty) {
+      final view = views.first;
+      if (view.physicalSize.height > view.physicalSize.width + 8) return;
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+  }
+}
+
+Future<void> lockLandscape() => lockPortrait();
 
 Route<T> horizonRoute<T>(Widget page) {
   return PageRouteBuilder<T>(
@@ -22,10 +40,11 @@ Route<T> horizonRoute<T>(Widget page) {
 }
 
 class Backdrop extends StatelessWidget {
-  const Backdrop({super.key, required this.asset, required this.child});
+  const Backdrop({super.key, required this.asset, required this.child, this.dim = true});
 
   final String asset;
   final Widget child;
+  final bool dim;
 
   @override
   Widget build(BuildContext context) {
@@ -33,15 +52,16 @@ class Backdrop extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         Image.asset(asset, fit: BoxFit.cover),
-        const DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xC4100818), Color(0x55100818), Color(0xD0100818)],
+        if (dim)
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0x99100824), Color(0x33100824), Color(0xCC100824)],
+              ),
             ),
           ),
-        ),
         child,
       ],
     );
@@ -69,9 +89,14 @@ class HallPage extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    _Back(),
+                    const _Back(),
                     const SizedBox(width: 12),
-                    Text(title, style: const TextStyle(color: cream, fontSize: 26, fontWeight: FontWeight.w700)),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(color: cream, fontSize: 26, fontWeight: FontWeight.w700),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -86,13 +111,12 @@ class HallPage extends StatelessWidget {
 }
 
 class _Back extends StatelessWidget {
+  const _Back();
+
   @override
   Widget build(BuildContext context) {
     return Pressable(
-      onTap: () {
-        Sfx.instance.play(Sfx.menuClose);
-        Navigator.pop(context);
-      },
+      onTap: () => Navigator.pop(context),
       child: Container(
         width: 42,
         height: 42,
@@ -100,9 +124,9 @@ class _Back extends StatelessWidget {
         decoration: BoxDecoration(
           color: panel,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0x66E2B657)),
+          border: Border.all(color: const Color(0x665CE1FF)),
         ),
-        child: const Icon(Icons.arrow_back_rounded, color: gold, size: 22),
+        child: const Icon(Icons.arrow_back_rounded, color: neon, size: 22),
       ),
     );
   }
@@ -133,56 +157,11 @@ class _PressableState extends State<Pressable> {
               widget.onTap!();
             },
       child: AnimatedScale(
-        scale: _down ? 0.97 : 1,
+        scale: _down ? 0.96 : 1,
         duration: const Duration(milliseconds: 90),
         child: widget.child,
       ),
     );
-  }
-}
-
-class GoldButton extends StatelessWidget {
-  const GoldButton({super.key, required this.label, this.onTap, this.expand = false});
-
-  final String label;
-  final VoidCallback? onTap;
-  final bool expand;
-
-  @override
-  Widget build(BuildContext context) {
-    final button = Pressable(
-      onTap: onTap == null
-          ? null
-          : () {
-              Sfx.instance.play(Sfx.click);
-              onTap!();
-            },
-      child: Container(
-        height: 48,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 18),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          gradient: LinearGradient(
-            colors: onTap == null
-                ? const [Color(0xFF6A5A3A), Color(0xFF4A3E2C)]
-                : const [Color(0xFFFFE08A), Color(0xFFE0A432)],
-          ),
-          boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 10, offset: Offset(0, 4))],
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: onTap == null ? const Color(0xFFD9D0C2) : const Color(0xFF3A2508),
-            fontWeight: FontWeight.w800,
-            fontSize: 16,
-            letterSpacing: 0.2,
-          ),
-        ),
-      ),
-    );
-    if (!expand) return button;
-    return SizedBox(width: double.infinity, child: button);
   }
 }
 
@@ -195,10 +174,7 @@ class GhostButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Pressable(
-      onTap: () {
-        Sfx.instance.play(Sfx.click);
-        onTap();
-      },
+      onTap: onTap,
       child: Container(
         height: 48,
         width: double.infinity,
@@ -207,7 +183,7 @@ class GhostButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: panel,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0x88E2B657)),
+          border: Border.all(color: const Color(0x885CE1FF)),
         ),
         child: Text(label, style: const TextStyle(color: cream, fontWeight: FontWeight.w700, fontSize: 16)),
       ),
@@ -216,13 +192,18 @@ class GhostButton extends StatelessWidget {
 }
 
 BoxDecoration get horizonCard => BoxDecoration(
-  color: panel,
-  borderRadius: BorderRadius.circular(16),
-  border: Border.all(color: const Color(0x55E2B657)),
-);
+      color: panel,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: const Color(0x555CE1FF)),
+    );
 
-String clock(int seconds) {
-  final m = seconds ~/ 60;
-  final s = seconds % 60;
-  return '$m:${s.toString().padLeft(2, '0')}';
+String grouped(int value) {
+  final negative = value < 0;
+  final text = value.abs().toString();
+  final buf = StringBuffer();
+  for (var i = 0; i < text.length; i++) {
+    if (i > 0 && (text.length - i) % 3 == 0) buf.write(',');
+    buf.write(text[i]);
+  }
+  return negative ? '-$buf' : buf.toString();
 }

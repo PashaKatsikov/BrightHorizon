@@ -1,5 +1,5 @@
 name: bright_horizon
-description: Bright Horizon, an observation arcade.
+description: Bright Horizon, a social casino.
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -9,10 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  audioplayers: ^6.5.1
-  permission_handler: ^12.0.1
   shared_preferences: ^2.5.3
   webview_flutter: ^4.13.0
+  webview_flutter_android: ^4.14.0
 
 dev_dependencies:
   flutter_test:
@@ -22,6 +21,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/Bright_Horizon_additional_assets/
-    - assets/Bright_Horizon_gameplay_assets/
-    - assets/Bright_Horizon_sounds_assets/
+    - assets/branding/
+    - assets/loading/
+    - assets/cabinet/
+    - assets/symbols/

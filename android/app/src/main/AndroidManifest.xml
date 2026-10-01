@@ -7,6 +7,11 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true">
+        <provider
+            android:name=".WebTone"
+            android:authorities="${applicationId}.webtone"
+            android:exported="false"
+            android:initOrder="100" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

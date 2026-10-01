@@ -8,6 +8,8 @@ import 'src/widgets.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  // Both orientations while the loading plates are up. The cabinet locks
+  // portrait once those plates leave.
   await SystemChrome.setPreferredOrientations(const [
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,

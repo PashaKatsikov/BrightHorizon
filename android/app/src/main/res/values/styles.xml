@@ -5,5 +5,7 @@
     </style>
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">@color/splash</item>
+        <!-- WebView must not invert page colors. Chrome does not, either. -->
+        <item name="android:forceDarkAllowed">false</item>
     </style>
 </resources>

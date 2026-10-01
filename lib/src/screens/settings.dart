@@ -14,55 +14,69 @@ class SettingsPage extends StatelessWidget {
     final profile = ProfileScope.of(context);
     return HallPage(
       title: 'Settings',
-      background: bgHorizon,
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: Column(
-            children: [
-              Container(
-                decoration: horizonCard,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  children: [
-                    const Expanded(
-                      child: Text('Sound effects', style: TextStyle(color: cream, fontSize: 16, fontWeight: FontWeight.w700)),
-                    ),
-                    Switch(
-                      value: profile.sfxOn,
-                      activeThumbColor: const Color(0xFF3A2508),
-                      activeTrackColor: gold,
-                      onChanged: profile.setSfx,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              GhostButton(
-                label: 'Privacy Policy',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    horizonRoute(const LegalPage(title: 'Privacy Policy', url: privacyPolicyUrl, light: true)),
-                  );
-                },
-              ),
-              const SizedBox(height: 10),
-              GhostButton(
-                label: 'Support',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    horizonRoute(const LegalPage(title: 'Support', url: supportUrl, light: false)),
-                  );
-                },
-              ),
-              const SizedBox(height: 18),
-              const Text('Bright Horizon  1.0.0', style: TextStyle(color: muted)),
-            ],
+      background: cabinetBackdrop,
+      child: ListView(
+        children: [
+          Container(
+            decoration: horizonCard,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Column(
+              children: [
+                _Stat('Credits', grouped(profile.credits)),
+                _Stat('Spins', grouped(profile.spins)),
+                _Stat('Total won', grouped(profile.totalWon)),
+                _Stat('Biggest win', grouped(profile.biggestWin)),
+              ],
+            ),
           ),
-        ),
+          const SizedBox(height: 14),
+          const Text(
+            'Bright Horizon is a social casino. Credits are a game token for entertainment. They are not money, they cannot be withdrawn, and they cannot be exchanged for prizes.',
+            style: TextStyle(color: cream, fontSize: 14, height: 1.4),
+          ),
+          const SizedBox(height: 16),
+          GhostButton(
+            label: 'Privacy Policy',
+            onTap: () {
+              Navigator.push(
+                context,
+                horizonRoute(const LegalPage(title: 'Privacy Policy', url: privacyPolicyUrl)),
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+          GhostButton(
+            label: 'Support',
+            onTap: () {
+              Navigator.push(
+                context,
+                horizonRoute(const LegalPage(title: 'Support', url: supportUrl)),
+              );
+            },
+          ),
+          const SizedBox(height: 18),
+          const Text('Bright Horizon  1.0.0', textAlign: TextAlign.center, style: TextStyle(color: muted)),
+        ],
+      ),
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat(this.label, this.value);
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: const TextStyle(color: muted, fontSize: 15))),
+          Text(value, style: const TextStyle(color: cream, fontWeight: FontWeight.w800, fontSize: 16)),
+        ],
       ),
     );
   }
