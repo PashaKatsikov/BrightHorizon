@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Signed APK/AAB copied back from the off-tree release build.
+/release/

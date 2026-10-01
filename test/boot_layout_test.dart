@@ -33,7 +33,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1700));
   });
 
-  testWidgets('a cheat preset closes itself and lands on the banner', (tester) async {
+  testWidgets('the cabinet does not offer the cheat menu', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -52,17 +52,8 @@ void main() {
     );
     await tester.pump();
 
-    await tester.tap(find.byKey(const Key('cheat-entry')));
-    await tester.pumpAndSettle();
-    expect(find.text('Mega Win'), findsOneWidget);
-
-    await tester.tap(find.text('Mega Win'));
-    await tester.pump();
+    expect(find.byKey(const Key('cheat-entry')), findsNothing);
     expect(find.text('Mega Win'), findsNothing);
-
-    await tester.pumpAndSettle();
-    expect(find.text('MEGA WIN'), findsOneWidget);
-    expect(find.byKey(const Key('cheat-entry')), findsOneWidget);
-    expect(profile.credits, greaterThan(Profile.openingCredits));
+    expect(profile.credits, Profile.openingCredits);
   });
 }

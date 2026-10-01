@@ -3,7 +3,7 @@ import 'marks.dart';
 /// Store builds set this to false. While it is true, an invisible control
 /// on the cabinet opens situation presets and dismisses itself after a choice,
 /// so the screen underneath can be captured cleanly.
-const bool cheatMenuEnabled = true;
+const bool cheatMenuEnabled = false;
 
 enum Cheat {
   bigWin,
