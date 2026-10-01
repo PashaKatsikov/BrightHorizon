@@ -12,13 +12,15 @@ class BootPage extends StatefulWidget {
   State<BootPage> createState() => _BootPageState();
 }
 
-class _BootPageState extends State<BootPage> with SingleTickerProviderStateMixin {
+class _BootPageState extends State<BootPage> with TickerProviderStateMixin {
   late final AnimationController _bar;
+  late final AnimationController _dots;
 
   @override
   void initState() {
     super.initState();
     _bar = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))..forward();
+    _dots = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
     WidgetsBinding.instance.addPostFrameCallback((_) => _run());
   }
 
@@ -52,6 +54,7 @@ class _BootPageState extends State<BootPage> with SingleTickerProviderStateMixin
   @override
   void dispose() {
     _bar.dispose();
+    _dots.dispose();
     super.dispose();
   }
 
@@ -78,27 +81,76 @@ class _BootPageState extends State<BootPage> with SingleTickerProviderStateMixin
               padding: EdgeInsets.only(bottom: bottom),
               child: FractionallySizedBox(
                 widthFactor: 0.42,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(99),
-                  child: SizedBox(
-                    height: 3,
-                    child: AnimatedBuilder(
-                      animation: _bar,
-                      builder: (context, _) {
-                        return LinearProgressIndicator(
-                          value: _bar.value,
-                          backgroundColor: const Color(0x55FFFFFF),
-                          color: neon,
-                        );
-                      },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _LoadingCaption(animation: _dots),
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(99),
+                      child: SizedBox(
+                        height: 8,
+                        child: AnimatedBuilder(
+                          animation: _bar,
+                          builder: (context, _) {
+                            return LinearProgressIndicator(
+                              value: _bar.value,
+                              backgroundColor: const Color(0x55FFFFFF),
+                              color: neon,
+                            );
+                          },
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// "Loading" plus up to three dots. The unused dots stay in the line as
+/// transparent glyphs so the label does not shift as the count changes.
+class _LoadingCaption extends StatelessWidget {
+  const _LoadingCaption({required this.animation});
+
+  final Animation<double> animation;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, _) {
+        final int shown = (animation.value * 4).floor() % 4;
+        return Text.rich(
+          TextSpan(
+            children: [
+              const TextSpan(text: 'Loading'),
+              TextSpan(text: '.' * shown),
+              TextSpan(
+                text: '.' * (3 - shown),
+                style: const TextStyle(color: Colors.transparent, shadows: <Shadow>[]),
+              ),
+            ],
+          ),
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: cream,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.1,
+            height: 1.0,
+            shadows: [
+              Shadow(color: Color(0xE6070418), blurRadius: 8),
+              Shadow(color: Color(0xCC070041), offset: Offset(0, 1)),
+            ],
+          ),
+        );
+      },
     );
   }
 }
