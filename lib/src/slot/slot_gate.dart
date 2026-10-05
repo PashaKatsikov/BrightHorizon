@@ -12,8 +12,8 @@ import 'marks.dart';
 // All of the game's arithmetic — rolling a window, pricing the paylines,
 // scoring scatters, picking a win tier — lives in `libskyward_seal.so`
 // (crate `native/skyward_seal`, module `slot`), never in the Dart AOT
-// image. This bridge hands the native side a stake (plus an optional
-// cheat preset and RNG seed) and parses the outcome JSON back into the
+// image. This bridge hands the native side a stake and an RNG seed and
+// parses the outcome JSON back into the
 // value types the cabinet renders.
 //
 // Android-only: every entry point returns null off-device, so the dev /
@@ -21,8 +21,8 @@ import 'marks.dart';
 // mirror in `engine.dart`.
 // ============================================================
 
-typedef _SpinNative = Pointer<Utf8> Function(Int64, Int32, Uint64);
-typedef _SpinDart = Pointer<Utf8> Function(int, int, int);
+typedef _SpinNative = Pointer<Utf8> Function(Int64, Uint64);
+typedef _SpinDart = Pointer<Utf8> Function(int, int);
 typedef _EvalNative = Pointer<Utf8> Function(Pointer<Utf8>, Int64);
 typedef _EvalDart = Pointer<Utf8> Function(Pointer<Utf8>, int);
 typedef _FreeNative = Void Function(Pointer<Utf8>);
@@ -81,12 +81,11 @@ class SlotGate {
   /// fallback is needed.
   bool get available => _ready;
 
-  /// Roll and price a spin natively. [cheat] is the native cheat code
-  /// (0..5) or -1 for a random roll; [seed] seeds the native RNG. Null
+  /// Roll and price a spin natively. [seed] seeds the native RNG. Null
   /// when the gate is unavailable.
-  NativeSpin? spin({required int stake, required int cheat, required int seed}) {
+  NativeSpin? spin({required int stake, required int seed}) {
     if (!_ready) return null;
-    final Pointer<Utf8> p = _spin!(stake, cheat, seed & 0x7FFFFFFFFFFFFFFF);
+    final Pointer<Utf8> p = _spin!(stake, seed & 0x7FFFFFFFFFFFFFFF);
     return _consume(p);
   }
 

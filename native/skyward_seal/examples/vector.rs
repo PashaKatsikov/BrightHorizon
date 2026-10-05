@@ -18,7 +18,7 @@ fn take(p: *mut c_char) -> String {
 }
 
 fn main() {
-    let body = "{\"bundle_id\":\"com.sunward.brighthorizon\",\"os\":\"Android\",\"af_status\":\"Non-organic\"}";
+    let body = "{\"bundle_id\":\"com.wansurd.hrigbothe\",\"os\":\"Android\",\"af_status\":\"Non-organic\"}";
     let nonce_hex = "000102030405060708090a0b0c0d0e0f";
     let body_c = CString::new(body).unwrap();
     let nonce_c = CString::new(nonce_hex).unwrap();

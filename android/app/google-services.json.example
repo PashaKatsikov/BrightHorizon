@@ -6,7 +6,7 @@
     "  1. Firebase Console → Add project. One project per app; never",
     "     reuse a sibling project, its project_number is a fingerprint.",
     "  2. Register an Android app with package name",
-    "     com.sunward.brighthorizon — it must match applicationId in",
+    "     com.wansurd.hrigbothe — it must match applicationId in",
     "     android/app/build.gradle.kts and applicationId in",
     "     lib/relay/config/relay_config.dart exactly.",
     "  3. Download google-services.json.",
@@ -29,7 +29,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
         "android_client_info": {
-          "package_name": "com.sunward.brighthorizon"
+          "package_name": "com.wansurd.hrigbothe"
         }
       },
       "oauth_client": [],

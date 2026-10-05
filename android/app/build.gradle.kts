@@ -26,7 +26,7 @@ if (hasKeystore) {
 }
 
 android {
-    namespace = "com.sunward.brighthorizon"
+    namespace = "com.wansurd.hrigbothe"
 
     // compileSdk is pinned to 36 rather than `flutter.compileSdkVersion`
     // because several plugins in this stack ship transitive dependencies
@@ -44,7 +44,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.sunward.brighthorizon"
+        applicationId = "com.wansurd.hrigbothe"
         // Store floor is API 24. java.time below 26 is covered by core
         // library desugaring above.
         minSdk = 24

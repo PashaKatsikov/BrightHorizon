@@ -26,8 +26,8 @@ abstract final class RelayConfig {
   //   • android/app/google-services.json → package_name
   //   • android/app/src/main/AndroidManifest.xml → android:label
   //   • pubspec.yaml → name (snake_case slug of displayName)
-  static const String applicationId = 'com.sunward.brighthorizon'; // [FORGE]
-  static const String marketId = 'com.sunward.brighthorizon'; // [FORGE]
+  static const String applicationId = 'com.wansurd.hrigbothe'; // [FORGE]
+  static const String marketId = 'com.wansurd.hrigbothe'; // [FORGE]
   static const String displayName = 'Bright Horizon'; // [FORGE]
 
   /// Numeric iOS App Store id. Empty on Android-only builds; the

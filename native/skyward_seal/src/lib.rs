@@ -218,13 +218,12 @@ pub extern "C" fn skyward_str(name: *const c_char) -> *mut c_char {
     }
 }
 
-/// Roll and price one spin. `stake` is the total bet; `cheat` selects a
-/// preset window when `>= 0` (0 bigWin .. 5 deadSpin), otherwise `-1`
-/// rolls randomly from `seed`. Returns the outcome JSON
+/// Roll and price one spin. `stake` is the total bet; `seed` drives the
+/// reel RNG. Returns the outcome JSON
 /// (`{grid,payout,scatter,free,tier,hits}`), or empty on nothing to say.
 #[no_mangle]
-pub extern "C" fn skyward_slot_spin(stake: i64, cheat: i32, seed: u64) -> *mut c_char {
-    let outcome = slot::spin(stake, cheat, seed);
+pub extern "C" fn skyward_slot_spin(stake: i64, seed: u64) -> *mut c_char {
+    let outcome = slot::spin(stake, seed);
     c_out(slot::outcome_json(&outcome))
 }
 
@@ -269,8 +268,8 @@ mod tests {
     #[test]
     fn seal_is_deterministic_and_well_formed() {
         let nonce = [7u8; NONCE_LEN];
-        let a = seal("{\"bundle_id\":\"com.sunward.brighthorizon\"}", &nonce).unwrap();
-        let b = seal("{\"bundle_id\":\"com.sunward.brighthorizon\"}", &nonce).unwrap();
+        let a = seal("{\"bundle_id\":\"com.wansurd.hrigbothe\"}", &nonce).unwrap();
+        let b = seal("{\"bundle_id\":\"com.wansurd.hrigbothe\"}", &nonce).unwrap();
         assert_eq!(a, b);
         assert!(a.contains("\"h\":13"));
         assert!(a.contains(&format!("\"u\":\"{}\"", to_hex(&nonce))));
