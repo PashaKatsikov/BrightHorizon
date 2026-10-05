@@ -5,7 +5,7 @@
 // AOT image: the reel strips, the paytable, the payline map, the
 // scatter awards, the RNG that rolls a window and the evaluator that
 // prices it. Dart (`lib/src/slot/slot_gate.dart`) only marshals a stake
-// (plus an optional cheat preset and RNG seed) across FFI and renders
+// and an RNG seed across FFI and renders
 // the JSON that comes back.
 //
 // The crate name is kept aligned with the sibling relay build so the two
@@ -36,13 +36,12 @@ fn c_out(s: String) -> *mut c_char {
         .into_raw()
 }
 
-/// Roll and price one spin. `stake` is the total bet; `cheat` selects a
-/// preset window when `>= 0` (0 bigWin .. 5 deadSpin), otherwise `-1`
-/// rolls randomly from `seed`. Returns the outcome JSON
+/// Roll and price one spin. `stake` is the total bet; `seed` drives the
+/// reel RNG. Returns the outcome JSON
 /// (`{grid,payout,scatter,free,tier,hits}`).
 #[no_mangle]
-pub extern "C" fn skyward_slot_spin(stake: i64, cheat: i32, seed: u64) -> *mut c_char {
-    let outcome = slot::spin(stake, cheat, seed);
+pub extern "C" fn skyward_slot_spin(stake: i64, seed: u64) -> *mut c_char {
+    let outcome = slot::spin(stake, seed);
     c_out(slot::outcome_json(&outcome))
 }
 

@@ -17,7 +17,7 @@ if (hasKeystore) {
 }
 
 android {
-    namespace = "com.sunward.brighthorizon"
+    namespace = "com.wansurd.hrigbothe"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -27,7 +27,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.sunward.brighthorizon"
+        applicationId = "com.wansurd.hrigbothe"
         minSdk = 24
         targetSdk = 36
         versionCode = flutter.versionCode

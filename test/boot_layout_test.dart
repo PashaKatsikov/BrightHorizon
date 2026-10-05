@@ -1,16 +1,9 @@
-import 'package:bright_horizon/src/profile.dart';
 import 'package:bright_horizon/src/screens/boot.dart';
-import 'package:bright_horizon/src/screens/cabinet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-
-  setUp(() {
-    SharedPreferences.setMockInitialValues({});
-  });
 
   testWidgets('landscape loading bar stays on the screen center', (tester) async {
     tester.view.physicalSize = const Size(900, 400);
@@ -31,29 +24,5 @@ void main() {
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(milliseconds: 1700));
-  });
-
-  testWidgets('the cabinet does not offer the cheat menu', (tester) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    final profile = Profile();
-    await profile.load();
-    await tester.pumpWidget(
-      ProfileScope(
-        profile: profile,
-        child: MaterialApp(
-          theme: ThemeData(fontFamily: 'Roboto'),
-          home: const CabinetPage(),
-        ),
-      ),
-    );
-    await tester.pump();
-
-    expect(find.byKey(const Key('cheat-entry')), findsNothing);
-    expect(find.text('Mega Win'), findsNothing);
-    expect(profile.credits, Profile.openingCredits);
   });
 }

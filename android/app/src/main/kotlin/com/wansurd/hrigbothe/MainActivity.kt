@@ -1,4 +1,4 @@
-package com.sunward.brighthorizon
+package com.wansurd.hrigbothe
 
 import io.flutter.embedding.android.FlutterActivity
 

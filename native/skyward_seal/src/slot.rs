@@ -4,8 +4,8 @@
 // Every number the cabinet shows is computed HERE, never in the Dart
 // AOT image: the reel strips, the paytable, the payline map, the
 // scatter awards, the RNG that rolls a window and the evaluator that
-// prices it. Dart only marshals a stake (plus an optional cheat preset
-// and RNG seed) across FFI and renders the JSON that comes back.
+// prices it. Dart only marshals a stake and an RNG seed across FFI and
+// renders the JSON that comes back.
 //
 // Mark indices MUST stay identical to `lib/src/slot/marks.dart`:
 //   0 cherry  1 orange  2 grape   3 bell    4 bar     5 ring
@@ -13,10 +13,6 @@
 //
 // Tier codes match `Tier` in `lib/src/slot/engine.dart`:
 //   0 none  1 big  2 mega  3 jackpot
-//
-// Cheat codes match the first six variants of `Cheat` in
-// `lib/src/slot/cheat.dart` (refill is handled in Dart, never spun):
-//   0 bigWin  1 megaWin  2 jackpot  3 freeSpins  4 smallWin  5 deadSpin
 // ============================================================
 
 // ── Symbol indices ──────────────────────────────────────────
@@ -173,57 +169,6 @@ fn reel_strips() -> [Vec<u8>; REELS] {
             &[SCATTER, WILD, SCATTER, WILD, DIAMOND],
         ),
     ]
-}
-
-// ── Cheat presets ────────────────────────────────────────────
-// Stored row-major (as authored); `cheat_grid` returns reel-major to
-// match the roller. `None` for refill / unknown codes.
-fn cheat_rows(code: i32) -> Option<[[u8; REELS]; ROWS]> {
-    match code {
-        0 => Some([
-            [CROWN, CROWN, CROWN, CROWN, CROWN],
-            [CHERRY, ORANGE, GRAPE, BELL, BAR],
-            [STAR, RING, DIAMOND, SEVEN, CHERRY],
-        ]),
-        1 => Some([
-            [SEVEN, SEVEN, SEVEN, SEVEN, SEVEN],
-            [CHERRY, ORANGE, GRAPE, BELL, BAR],
-            [STAR, RING, DIAMOND, CROWN, CHERRY],
-        ]),
-        2 => Some([
-            [WILD, WILD, WILD, WILD, WILD],
-            [CHERRY, ORANGE, GRAPE, BELL, BAR],
-            [STAR, RING, DIAMOND, CROWN, SEVEN],
-        ]),
-        3 => Some([
-            [SCATTER, GRAPE, STAR, CROWN, BAR],
-            [CHERRY, BELL, SCATTER, DIAMOND, GRAPE],
-            [ORANGE, BAR, RING, SEVEN, SCATTER],
-        ]),
-        4 => Some([
-            [CHERRY, CHERRY, CHERRY, ORANGE, GRAPE],
-            [STAR, RING, CROWN, DIAMOND, SEVEN],
-            [BAR, BELL, GRAPE, STAR, RING],
-        ]),
-        5 => Some([
-            [CHERRY, ORANGE, GRAPE, BELL, BAR],
-            [STAR, RING, CROWN, DIAMOND, SEVEN],
-            [BAR, GRAPE, ORANGE, CHERRY, STAR],
-        ]),
-        _ => None,
-    }
-}
-
-/// Reel-major cheat window `[reel][row]`, or `None` for refill/unknown.
-fn cheat_grid(code: i32) -> Option<[[u8; ROWS]; REELS]> {
-    let rows = cheat_rows(code)?;
-    let mut grid = [[0u8; ROWS]; REELS];
-    for reel in 0..REELS {
-        for row in 0..ROWS {
-            grid[reel][row] = rows[row][reel];
-        }
-    }
-    Some(grid)
 }
 
 // ── RNG ──────────────────────────────────────────────────────
@@ -405,13 +350,9 @@ pub fn evaluate(grid: [[u8; ROWS]; REELS], stake: i64) -> Outcome {
     }
 }
 
-/// Roll a window (or use a cheat preset when `cheat >= 0`) and price it.
-pub fn spin(stake: i64, cheat: i32, seed: u64) -> Outcome {
-    let grid = match cheat_grid(cheat) {
-        Some(g) => g,
-        None => roll(seed),
-    };
-    evaluate(grid, stake)
+/// Roll a window from `seed` and price it.
+pub fn spin(stake: i64, seed: u64) -> Outcome {
+    evaluate(roll(seed), stake)
 }
 
 // ── JSON ─────────────────────────────────────────────────────
@@ -498,7 +439,14 @@ mod tests {
 
     #[test]
     fn crown_line_is_a_big_win() {
-        let o = spin(100, 0, 0);
+        let grid: [[u8; ROWS]; REELS] = [
+            [CROWN, CHERRY, STAR],
+            [CROWN, ORANGE, RING],
+            [CROWN, GRAPE, DIAMOND],
+            [CROWN, BELL, SEVEN],
+            [CROWN, BAR, CHERRY],
+        ];
+        let o = evaluate(grid, 100);
         assert_eq!(o.payout, 250 * (100 / 20));
         assert_eq!(o.tier, 1);
         assert_eq!(o.free_spins, 0);
@@ -506,21 +454,42 @@ mod tests {
 
     #[test]
     fn five_sevens_are_a_mega_win() {
-        let o = spin(100, 1, 0);
+        let grid: [[u8; ROWS]; REELS] = [
+            [SEVEN, CHERRY, STAR],
+            [SEVEN, ORANGE, RING],
+            [SEVEN, GRAPE, DIAMOND],
+            [SEVEN, BELL, CROWN],
+            [SEVEN, BAR, CHERRY],
+        ];
+        let o = evaluate(grid, 100);
         assert_eq!(o.payout, 600 * 5);
         assert_eq!(o.tier, 2);
     }
 
     #[test]
     fn five_wilds_are_a_jackpot() {
-        let o = spin(100, 2, 0);
+        let grid: [[u8; ROWS]; REELS] = [
+            [WILD, CHERRY, STAR],
+            [WILD, ORANGE, RING],
+            [WILD, GRAPE, DIAMOND],
+            [WILD, BELL, CROWN],
+            [WILD, BAR, SEVEN],
+        ];
+        let o = evaluate(grid, 100);
         assert_eq!(o.tier, 3);
         assert!(o.payout >= 1000 * 5);
     }
 
     #[test]
     fn three_scatters_award_free_spins_and_no_line_prize() {
-        let o = spin(100, 3, 0);
+        let grid: [[u8; ROWS]; REELS] = [
+            [SCATTER, CHERRY, ORANGE],
+            [GRAPE, BELL, BAR],
+            [STAR, SCATTER, RING],
+            [CROWN, DIAMOND, SEVEN],
+            [BAR, GRAPE, SCATTER],
+        ];
+        let o = evaluate(grid, 100);
         assert_eq!(o.scatter_count, 3);
         assert_eq!(o.free_spins, 8);
         assert_eq!(o.payout, 2 * 100);
@@ -530,7 +499,14 @@ mod tests {
 
     #[test]
     fn three_cherries_stay_a_small_win() {
-        let o = spin(100, 4, 0);
+        let grid: [[u8; ROWS]; REELS] = [
+            [CHERRY, STAR, BAR],
+            [CHERRY, RING, BELL],
+            [CHERRY, CROWN, GRAPE],
+            [ORANGE, DIAMOND, STAR],
+            [GRAPE, SEVEN, RING],
+        ];
+        let o = evaluate(grid, 100);
         assert_eq!(o.payout, 10 * 5);
         assert_eq!(o.tier, 0);
         assert_eq!(o.hits.len(), 3);
@@ -538,7 +514,14 @@ mod tests {
 
     #[test]
     fn a_dead_spin_pays_nothing() {
-        let o = spin(100, 5, 0);
+        let grid: [[u8; ROWS]; REELS] = [
+            [CHERRY, STAR, BAR],
+            [ORANGE, RING, GRAPE],
+            [GRAPE, CROWN, ORANGE],
+            [BELL, DIAMOND, CHERRY],
+            [BAR, SEVEN, STAR],
+        ];
+        let o = evaluate(grid, 100);
         assert_eq!(o.payout, 0);
         assert_eq!(o.free_spins, 0);
         assert!(o.hits.is_empty());
@@ -572,14 +555,14 @@ mod tests {
         for _ in 0..8000 {
             let stake = 20;
             wagered += stake;
-            let o = spin(stake, -1, next_seed());
+            let o = spin(stake, next_seed());
             returned += o.payout;
             let mut free = o.free_spins;
             let mut guard = 0;
             while free > 0 && guard < 80 {
                 guard += 1;
                 free -= 1;
-                let extra = spin(stake, -1, next_seed());
+                let extra = spin(stake, next_seed());
                 returned += extra.payout * 2;
                 free += extra.free_spins;
             }
@@ -590,7 +573,7 @@ mod tests {
 
     #[test]
     fn grid_round_trips_through_csv() {
-        let o = spin(100, 0, 0);
+        let o = spin(100, 1);
         let csv = (0..REELS)
             .flat_map(|r| (0..ROWS).map(move |c| (r, c)))
             .map(|(r, c)| o.grid[r][c].to_string())

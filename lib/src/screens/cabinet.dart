@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 
 import '../frames.dart';
 import '../profile.dart';
-import '../slot/cheat.dart';
 import '../slot/engine.dart';
 import '../slot/marks.dart';
 import '../widgets.dart';
@@ -33,7 +32,6 @@ class _CabinetPageState extends State<CabinetPage> with SingleTickerProviderStat
   int _lastWin = 0;
   String? _bannerTitle;
   String? _bannerDetail;
-  bool _cheatOpen = false;
 
   @override
   void initState() {
@@ -50,27 +48,18 @@ class _CabinetPageState extends State<CabinetPage> with SingleTickerProviderStat
     super.dispose();
   }
 
-  void _start({Cheat? cheat}) {
+  void _start() {
     if (_spinning) return;
     final profile = ProfileScope.read(context);
-    final free = _freeLeft > 0 && cheat == null;
+    final free = _freeLeft > 0;
     if (!free) {
-      if (profile.credits < profile.stake) {
-        if (cheat != null && cheat != Cheat.refill) {
-          profile.grant(profile.stake - profile.credits);
-        } else {
-          return;
-        }
-      }
+      if (profile.credits < profile.stake) return;
       if (!profile.spend(profile.stake)) return;
     } else {
       _freeLeft -= 1;
     }
 
-    final outcome = _engine.spin(
-      stake: profile.stake,
-      cheat: cheat == Cheat.refill ? null : cheat,
-    );
+    final outcome = _engine.spin(stake: profile.stake);
     setState(() {
       _spinning = true;
       _settled = false;
@@ -81,7 +70,6 @@ class _CabinetPageState extends State<CabinetPage> with SingleTickerProviderStat
       _hits = const {};
       _bannerTitle = null;
       _bannerDetail = null;
-      _cheatOpen = false;
     });
     HapticFeedback.lightImpact().ignore();
     _spin.forward(from: 0);
@@ -150,15 +138,6 @@ class _CabinetPageState extends State<CabinetPage> with SingleTickerProviderStat
       _bannerDetail = null;
     });
     _queueFree();
-  }
-
-  void _applyCheat(Cheat cheat) {
-    setState(() => _cheatOpen = false);
-    if (cheat == Cheat.refill) {
-      ProfileScope.read(context).grant(10000);
-      return;
-    }
-    _start(cheat: cheat);
   }
 
   @override
@@ -279,22 +258,6 @@ class _CabinetPageState extends State<CabinetPage> with SingleTickerProviderStat
                     ],
                   ),
                 ),
-                if (cheatMenuEnabled)
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: GestureDetector(
-                        key: const Key('cheat-entry'),
-                        behavior: HitTestBehavior.opaque,
-                        onTap: _spinning
-                            ? null
-                            : () => setState(() => _cheatOpen = true),
-                        child: const SizedBox(width: 148, height: 36),
-                      ),
-                    ),
-                  ),
                 if (_bannerTitle != null)
                   Positioned.fill(
                     child: GestureDetector(
@@ -304,7 +267,6 @@ class _CabinetPageState extends State<CabinetPage> with SingleTickerProviderStat
                       child: _Banner(title: _bannerTitle!, detail: _bannerDetail),
                     ),
                   ),
-                if (_cheatOpen) _CheatSheet(onPick: _applyCheat, onClose: () => setState(() => _cheatOpen = false)),
               ],
             ),
           ),
@@ -611,85 +573,6 @@ class _Banner extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _CheatOption extends StatelessWidget {
-  const _CheatOption({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Pressable(
-      onTap: onTap,
-      child: Container(
-        height: 48,
-        width: double.infinity,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: const Color(0xFF24143A),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0x665CE1FF)),
-        ),
-        child: Text(label, style: const TextStyle(color: cream, fontWeight: FontWeight.w700, fontSize: 16)),
-      ),
-    );
-  }
-}
-
-class _CheatSheet extends StatelessWidget {
-  const _CheatSheet({required this.onPick, required this.onClose});
-
-  final ValueChanged<Cheat> onPick;
-  final VoidCallback onClose;
-
-  @override
-  Widget build(BuildContext context) {
-    const options = <(Cheat, String)>[
-      (Cheat.bigWin, 'Big Win'),
-      (Cheat.megaWin, 'Mega Win'),
-      (Cheat.jackpot, 'Jackpot'),
-      (Cheat.freeSpins, 'Free Spins'),
-      (Cheat.smallWin, 'Small Win'),
-      (Cheat.deadSpin, 'Dead Spin'),
-      (Cheat.refill, 'Add 10,000 Credits'),
-    ];
-    return Positioned.fill(
-      child: Stack(
-        children: [
-          GestureDetector(
-            onTap: onClose,
-            child: const ColoredBox(color: Color(0xCC070418)),
-          ),
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 320),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF12081F),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0x885CE1FF)),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (final option in options) ...[
-                        _CheatOption(label: option.$2, onTap: () => onPick(option.$1)),
-                        const SizedBox(height: 8),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

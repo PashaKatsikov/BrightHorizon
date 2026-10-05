@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'cheat.dart';
 import 'marks.dart';
 import 'slot_gate.dart';
 
@@ -83,16 +82,10 @@ class SlotEngine {
   /// Rolls a window and prices it. The arithmetic runs in Rust whenever
   /// `libskyward_seal.so` is present (every shipped Android build); the
   /// Dart body below is the off-device fallback for dev / `flutter test`.
-  SpinOutcome spin({required int stake, Cheat? cheat}) {
-    final native = SlotGate.instance.spin(
-      stake: stake,
-      cheat: cheat?.index ?? -1,
-      seed: _seed(),
-    );
+  SpinOutcome spin({required int stake}) {
+    final native = SlotGate.instance.spin(stake: stake, seed: _seed());
     if (native != null) return _fromNative(native);
-
-    final grid = cheat == null ? _roll() : cheatReelGrid(cheat);
-    return _evaluateDart(grid, stake);
+    return _evaluateDart(_roll(), stake);
   }
 
   int _seed() {
