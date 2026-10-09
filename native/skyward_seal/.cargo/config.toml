@@ -6,6 +6,31 @@
 #   rustup run stable-x86_64-pc-windows-gnu cargo build --release \
 #     --target aarch64-linux-android
 # Adjust the NDK path below if the installed version differs.
+#
+# ── BoringSSL / btls-sys build environment (wreq transport) ──
+# wreq → btls-sys compiles BoringSSL via CMake. Getting a working .so
+# requires the environment to be set up EXACTLY like this, or the archives
+# come out for the wrong architecture and the dynamic loader fails at
+# runtime with `cannot locate symbol SSL_CTX_free`:
+#
+#   • Do NOT export CC_<target> / CXX_<target> (e.g. CC_aarch64_linux_android).
+#     btls-sys drives CMake with android.toolchain.cmake, which already
+#     selects the correct NDK clang. A host CC_ makes BoringSSL's first
+#     pass compile libssl.a for the HOST (COFF x86-64 on Windows); the
+#     linker silently drops those objects and the .so ships with no SSL_*.
+#   • Put ONLY the NDK llvm `bin` directory on PATH.
+#   • CFLAGS_<target>, CXXFLAGS_<target> and
+#     BINDGEN_EXTRA_CLANG_ARGS_<target> are safe to keep — cc and bindgen
+#     read them, btls ignores them.
+#   • Use the newest CMake from the Android SDK with MAJOR VERSION < 4
+#     (CMake 4 is incompatible with android.toolchain.cmake) and the Ninja
+#     generator, e.g.:
+#       $env:PATH = "<sdk>/cmake/3.22.1/bin;<ndk>/.../llvm/.../bin;$env:PATH"
+#       $env:CMAKE_GENERATOR = "Ninja"
+#
+# The circular libssl/libcrypto link is grouped in build.rs
+# (--start-group -lssl -lcrypto --end-group). After a build, confirm both
+# archives are ELF aarch64 (first bytes 7F 45 4C 46), never COFF (64 86).
 
 [target.aarch64-linux-android]
 linker = "C:/Users/Paul/AppData/Local/Android/Sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android24-clang.cmd"

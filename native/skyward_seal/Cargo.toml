@@ -13,6 +13,23 @@ sha2 = "0.10"
 hmac = "0.12"
 base64 = "0.22"
 
+# ── Browser-emulating transport (Android only) ──
+# Cloudflare in front of the config endpoint fingerprints the TLS
+# handshake (JA3/JA4). A stock rustls/ureq client — or any client that
+# carries a browser User-Agent over a non-browser handshake — is served a
+# 403 challenge. `wreq` drives BoringSSL and sets a real Chrome ClientHello
+# plus the matching header order/UA as ONE unit (see `skyward_fetch`); the
+# emulation owns the UA, so nothing here overrides it.
+#
+# Gated to Android so the host/desktop dev build (which never does the
+# config call — the gate is closed off-device) does not pull BoringSSL.
+[target.'cfg(target_os = "android")'.dependencies]
+wreq = { version = "0.16", features = ["gzip", "brotli", "zstd", "deflate"] }
+wreq-util = "0.2"
+# wreq is async; we block_on a single request inside the FFI call. A
+# current-thread runtime is enough and keeps the .so small.
+tokio = { version = "1", default-features = false, features = ["rt", "net", "time"] }
+
 [profile.release]
 opt-level = "s"
 lto = true

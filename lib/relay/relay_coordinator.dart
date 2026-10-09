@@ -147,10 +147,14 @@ class RelayCoordinator {
       await keystore.saveRoute(RouteMemory.portal);
       return PortalLanding(answer.url!);
     }
-    // Only a SUCCESSFUL {ok:false} commits the native route. A network
-    // failure never does — that would trap paid users in the game for
-    // the lifetime of the install.
-    await keystore.saveRoute(RouteMemory.native);
+    // Only a DELIVERED {ok:false} commits the native route (the backend
+    // signals it with 404 + {ok:false} — still a real verdict). A transport
+    // failure is NOT delivered, so the route stays undecided and the next
+    // launch re-runs the pipeline; committing native there would trap a
+    // paid user in the game for the lifetime of the install.
+    if (answer.delivered) {
+      await keystore.saveRoute(RouteMemory.native);
+    }
     return const GameLanding();
   }
 

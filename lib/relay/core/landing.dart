@@ -41,12 +41,21 @@ enum RouteMemory {
 ///
 /// Wire keys are `{ok, url, expires, message}` — mapped verbatim, no
 /// key renaming. The backend contract preserves those exact spellings.
+///
+/// [delivered] marks a GENUINE backend answer — a response whose body was
+/// valid JSON carrying an `ok` field — as opposed to a transport failure
+/// (no connection, timeout, a Cloudflare challenge page, a 5xx with no
+/// JSON, etc.). This matters because the backend signals a negative verdict
+/// with HTTP 404 + `{ok:false}`, which is NOT an error: only a delivered
+/// `{ok:false}` may commit the install to the native game, whereas a
+/// transport failure must leave the route open so a later launch can retry.
 class Verdict {
   const Verdict({
     required this.approved,
     this.url,
     this.expiresAt,
     this.note,
+    this.delivered = false,
   });
 
   factory Verdict.fromJson(Map<String, dynamic> json) {
@@ -60,6 +69,7 @@ class Verdict {
           ? rawExpiry.toInt()
           : int.tryParse(rawExpiry?.toString() ?? ''),
       note: json['message']?.toString(),
+      delivered: true,
     );
   }
 
@@ -70,6 +80,10 @@ class Verdict {
   final String? url;
   final int? expiresAt;
   final String? note;
+
+  /// True when this came from a real backend reply (body was JSON with an
+  /// `ok`), false for transport/parse failures. See the class doc.
+  final bool delivered;
 
   bool get hasDestination => approved && url != null && url!.isNotEmpty;
 }

